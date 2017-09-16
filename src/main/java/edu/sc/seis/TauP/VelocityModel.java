@@ -49,6 +49,9 @@ import java.util.List;
  * 
  * 
  * @author H. Philip Crotwell
+ * 
+ * Modified for missing core structure.
+ * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class VelocityModel implements Cloneable, Serializable {
 
@@ -1301,7 +1304,7 @@ public class VelocityModel implements Cloneable, Serializable {
         // iocb is either below a fluid layer or is equal to cmb or center of earth
         // belowLayer is bottommost layer, so belowLayer.botDepth == radius of earth
         if(belowLayer.getBotDepth()  == tempCmbDepth || (belowLayer.getBotSVelocity() == 0.0
-                && belowLayer.getTopSVelocity() > 0.0
+                && belowLayer.getTopSVelocity() == 0.0 //SH correcting former typo in comparison sign
                 && Math.abs(iocbDepth - belowLayer.getBotDepth()) < iocbMin)) {
             tempIocbDepth = belowLayer.getBotDepth();
             iocbMin = Math.abs(iocbDepth - belowLayer.getBotDepth());

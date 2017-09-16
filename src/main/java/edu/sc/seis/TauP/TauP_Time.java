@@ -46,6 +46,9 @@ import java.util.Properties;
  * 
  * @version 1.1.3 Wed Jul 18 15:00:35 GMT 2001
  * @author H. Philip Crotwell
+ * 
+ * Modified to account for all planets wrt to (missing) core-structure
+ * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class TauP_Time {
 
@@ -826,6 +829,30 @@ public class TauP_Time {
                 }
             }
             */
+            
+            /*
+             * check for phases not allowed in new velocity model (e.g. K for models missing an outer core), SH
+             */
+            if (tMod.getMohoDepth() == 0.) { //for models without crust
+            	if (tempPhaseName.contains("m") || tempPhaseName.contains("g") || tempPhaseName.contains("n")) alreadyAdded=true; 
+            }
+            if (tMod.getCmbDepth() == tMod.getIocbDepth()) { //for models without outer core
+            	if (tempPhaseName.contains("K") || tempPhaseName.contains("k")) alreadyAdded=true;
+            	if (tMod.getCmbDepth() == tMod.getRadiusOfEarth()) { //for models without core at all
+            		if (tempPhaseName.contains("diff") || tempPhaseName.contains("c")) alreadyAdded=true;
+            	}
+            	else { //solid core only
+            		if (!(tempPhaseName.contains("I") || tempPhaseName.contains("J") || tempPhaseName.contains("i"))) {
+	            		//for models w only solid core add a default PIP, SIS as replacement for PKP, SKS, user could also ask for PIJS etc.
+	            		tempPhaseName = tempPhaseName.replaceAll("K", "I"); 
+	            		alreadyAdded = false;
+            		}
+            	}
+            }
+            if (tMod.getIocbDepth() == tMod.getRadiusOfEarth()) { //for models without inner/solid core
+            	if (tempPhaseName.contains("I") || tempPhaseName.contains("J")) alreadyAdded=true;
+            }
+            
             if(!alreadyAdded) {
                 // didn't find it precomputed, so recalculate
                 try {
