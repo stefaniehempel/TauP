@@ -47,7 +47,8 @@ import java.util.Properties;
  * @version 1.1.3 Wed Jul 18 15:00:35 GMT 2001
  * @author H. Philip Crotwell
  * 
- * Modified to account for all planets wrt to (missing) core-structure
+ * Modified to account for all planets wrt to (missing) core-structure.
+ * High precision flag.
  * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class TauP_Time {
@@ -66,6 +67,8 @@ public class TauP_Time {
     public static final String TEXT = "text";
     
     public String outputFormat = TEXT;
+    
+    public boolean outputPrecision = false; //SH, to increase output precision by flag, or automatically for smaller bodies
 
     protected String modelName = "iasp91";
 
@@ -138,7 +141,7 @@ public class TauP_Time {
                           e.getMessage());
             toolProps = new Properties();
         }
-        Outputs.configure(toolProps);
+        Outputs.configure(toolProps, outputPrecision); //SH
     }
 
     public TauP_Time(TauModel tMod) throws TauModelException {
@@ -646,6 +649,10 @@ public class TauP_Time {
                     cmdLineArgPhaseFile = true;
                     toolProps.put("taup.phase.file", args[i + 1]);
                     i++;
+                } else if(dashEquals("prc", args[i])) { //SH
+                	outputPrecision = true;
+                	Outputs.configure(toolProps, outputPrecision);
+                	i++;
                 } else if(i < args.length - 2) {
                     if(args[i].equalsIgnoreCase("-sta")
                             || args[i].equalsIgnoreCase("-station")) {

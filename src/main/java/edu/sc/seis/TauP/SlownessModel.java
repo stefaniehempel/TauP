@@ -38,6 +38,9 @@ import java.util.List;
  * 
  * @author H. Philip Crotwell
  * 
+ * Modified to increase sampling automatically for smaller planets, R<100.km.
+ * S. Hempel, ISAE Toulouse Sep 2017
+ * 
  */
 public abstract class SlownessModel implements Serializable {
 
@@ -1558,6 +1561,13 @@ public abstract class SlownessModel implements Serializable {
         double deltaDepth;
         double velocity;
         double p;
+        /* decrease maxDepthInterval for planets smaller than Earth, SH */
+        if ( radiusOfEarth / maxDepthInterval < 55. ) {
+        	double planetRatio = radiusOfEarth/6371.;
+        	this.setMaxDepthInterval(radiusOfEarth/100.);
+        	this.setMinDeltaP(this.getMinDeltaP()*planetRatio);
+        	this.setMaxDeltaP(this.getMaxDeltaP()*planetRatio);
+        }
         try {
             for(int j = 0; j < SLayers.size(); j++) {
                 sLayer = SLayers.get(j);

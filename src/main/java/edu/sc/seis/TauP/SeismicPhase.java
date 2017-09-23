@@ -39,7 +39,7 @@ import java.util.List;
  * 
  * G. Helffrich/U. Bristol 24 Feb. 2007
  * 
- * Modified to interpolate getPath which is imprecise for pronounced LVZs.
+ * Modified to interpolate getPath which is imprecise for pronounced LVZs, and tiny bodies.
  * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class SeismicPhase implements Serializable, Cloneable {
@@ -2483,14 +2483,23 @@ public class SeismicPhase implements Serializable, Cloneable {
         ArrayList<TimeDist[]> pathList = new ArrayList<TimeDist[]>();
         // define searchDist, initialize variable for actually traveled distancec, SH
         double searchDist = currArrival.getDist(); //in radians
-        double trueDist = searchDist*.95; //random dummy
         double searchRayParam = currArrival.getRayParam();
         // get neighbor point for starting point, SH
-        int rayNum = currArrival.getRayParamIndex() + 1;
+        int rayNum = currArrival.getRayParamIndex()+1;
         if (rayNum > minRayParamIndex-maxRayParamIndex) rayNum -=2;
-        double prevDist = dist[ rayNum ];
-		double prevRayParam = rayParams[ rayNum ];
-        
+        // find left and right limit
+        double prevDist = dist[rayNum];
+        double rightDist = prevDist;
+        double prevRayParam = rayParams[rayNum];
+        if (searchDist < prevDist) {
+        	rightDist = dist[rayNum-1];
+        } else {
+        	rightDist = prevDist;
+        	prevDist = dist[rayNum+1];
+        	prevRayParam = rayParams[rayNum+1];
+        }
+        double trueDist = searchDist - (searchDist - prevDist)/2; //random dummy
+		
 		List<TimeDist> outPath = new ArrayList<TimeDist>();
         TimeDist cummulative;
         TimeDist prev;
@@ -2502,7 +2511,7 @@ public class SeismicPhase implements Serializable, Cloneable {
          */
         TimeDist[] tempTimeDist = new TimeDist[1];
         
-        while (Math.abs(searchDist - trueDist) > refineDistToleranceRadian ) {
+        while ((Math.abs(searchDist - trueDist) > refineDistToleranceRadian ) || outPath.isEmpty()) {
         	pathList.clear();
 	        tempTimeDist[0] = new TimeDist(searchRayParam,
 	                                       0.0,
@@ -2609,11 +2618,16 @@ public class SeismicPhase implements Serializable, Cloneable {
 	                }
 	            }
             trueDist = outPath.get(outPath.size()-1).getDistRadian();
-            searchRayParam =  (searchDist - trueDist)
-	                * (prevRayParam - searchRayParam)
-	                / (prevDist - trueDist)
-	                + searchRayParam;
-            prevDist = trueDist; prevRayParam = cummulative.getP(); //?
+
+            if ( (trueDist - prevDist) * (searchDist - trueDist ) >= 0. ) {
+            	searchRayParam += (searchDist - trueDist)
+            			* (prevRayParam - searchRayParam)
+    	                / (prevDist - trueDist);
+            } else { //occurs for small planets where distance sampling not good enough?
+            	throw new RuntimeException("Insufficient ray parameter sampling, probably due to a very small planet; or close to caustic.");
+            }
+            prevDist = trueDist; prevRayParam = cummulative.getP();
+            
 			if (searchRayParam <= 0.) {
 				throw new RuntimeException("Ray parameter interpolation failed.");
 			}
