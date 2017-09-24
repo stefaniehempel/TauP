@@ -37,28 +37,45 @@ import java.util.Properties;
  * @author Philip Crotwell
  * @version 1.1.3 Wed Jul 18 15:00:35 GMT 2001
  * 
- * 
+ * Modified to include higher precision output.
+ * S. Hempel, ISAE Toulouse Sep 2017
  * 
  */
 public class Outputs {
     
-    public static void configure(Properties props) {
+	public static void configure(Properties props) {
+		configure(props, false);
+	}
+	
+    public static void configure(Properties props, boolean precision) {
         String formString;
-        formString = "%8." + props.getProperty("taup.depth.precision", "1")
-                + "f";
-        depthFormat = new Format(formString);
-        formString = "%8." + props.getProperty("taup.distance.precision", "2")
-                + "f";
-        distanceFormat = new Format(formString);
-        formString = "%8." + props.getProperty("taup.time.precision", "2")
-                + "f";
-        timeFormat = new Format(formString);
-        formString = "%8." + props.getProperty("taup.rayparam.precision", "3")
-                + "f";
-        rayParamFormat = new Format(formString);
         formString = "%8." + props.getProperty("taup.latlon.precision", "2")
-                + "f";
+        + "f";
         latLonFormat = new Format(formString);
+        
+        //SH
+        formString = "%8.6f";
+        highPrecision = new Format(formString);
+        
+        if (precision) {
+        	distanceFormat = new Format(formString);
+        	timeFormat = new Format(formString);
+        	rayParamFormat = new Format(formString);
+        	depthFormat = new Format(formString);
+        } else {
+        	formString = "%8." + props.getProperty("taup.depth.precision", "1")
+            + "f";
+        	depthFormat = new Format(formString);
+	        formString = "%8." + props.getProperty("taup.distance.precision", "2")
+	                + "f";
+	        distanceFormat = new Format(formString);
+	        formString = "%8." + props.getProperty("taup.time.precision", "2")
+	                + "f";
+	        timeFormat = new Format(formString);
+	        formString = "%8." + props.getProperty("taup.rayparam.precision", "3")
+	                + "f";
+	        rayParamFormat = new Format(formString);
+        }
     }
 
     public static String formatDepth(double depth) {
@@ -80,6 +97,10 @@ public class Outputs {
     public static String formatLatLon(double latlon) {
         return latLonFormat.form(latlon);
     }
+    
+    public static String formatHigh(double latlon) {
+        return highPrecision.form(latlon);
+    }
 
     protected static Format depthFormat = new Format("%8.1f");
 
@@ -90,4 +111,6 @@ public class Outputs {
     protected static Format rayParamFormat = new Format("%8.3f");
 
     protected static Format latLonFormat = new Format("%8.2f");
+    
+    protected static Format highPrecision = new Format("8.6f");
 } // Outputs

@@ -38,6 +38,9 @@ import java.util.List;
  * downgoing wave from source in core; "k" - upgoing wave from source in core.
  * 
  * G. Helffrich/U. Bristol 24 Feb. 2007
+ * 
+ * Modified to interpolate getPath which is imprecise for pronounced LVZs, and tiny bodies.
+ * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class SeismicPhase implements Serializable, Cloneable {
 
@@ -2472,118 +2475,164 @@ public class SeismicPhase implements Serializable, Cloneable {
         return currArrival;
     }
     
+    /** due to rayParam imprecision outPath.dist does not always fit currArrival.dist
+     *  thus: introducing interpolation for searchDist, SH
+     * @param currArrival
+     * @return
+     */
     protected List<TimeDist> calcPathTimeDist(Arrival currArrival) {
         ArrayList<TimeDist[]> pathList = new ArrayList<TimeDist[]>();
+        // define searchDist, initialize variable for actually traveled distancec, SH
+        double searchDist = currArrival.getDist(); //in radians
+        double searchRayParam = currArrival.getRayParam();
+        // get neighbor point for starting point, SH
+        int rayNum = currArrival.getRayParamIndex()+1;
+        if (rayNum > minRayParamIndex-maxRayParamIndex) rayNum -=2;
+        // find left and right limit
+        double prevDist = dist[rayNum];
+        double rightDist = prevDist;
+        double prevRayParam = rayParams[rayNum];
+        if (searchDist < prevDist) {
+        	rightDist = dist[rayNum-1];
+        } else {
+        	rightDist = prevDist;
+        	prevDist = dist[rayNum+1];
+        	prevRayParam = rayParams[rayNum+1];
+        }
+        double trueDist = searchDist - (searchDist - prevDist)/2; //random dummy
+		
+		List<TimeDist> outPath = new ArrayList<TimeDist>();
+        TimeDist cummulative;
+        TimeDist prev;
+        TimeDist[] branchPath;
+        int numAdded = 0;
         /*
          * Find the ray parameter index that corresponds to the arrival ray
          * parameter in the TauModel, ie it is between rayNum and rayNum+1.
          */
         TimeDist[] tempTimeDist = new TimeDist[1];
-        tempTimeDist[0] = new TimeDist(currArrival.getRayParam(),
-                                       0.0,
-                                       0.0,
-                                       tMod.getSourceDepth());
-        pathList.add(tempTimeDist);
-            for(int i = 0; i < branchSeq.size(); i++) {
-                int branchNum = ((Integer)branchSeq.get(i)).intValue();
-                boolean isPWave = ((Boolean)waveType.get(i)).booleanValue();
-                if(DEBUG) {
-                    System.out.println("i=" + i + " branchNum=" + branchNum
-                            + " isPWave=" + isPWave + " downgoing="
-                            + ((Boolean)downGoing.get(i)).booleanValue());
-                }
-                try {
-                    tempTimeDist = tMod.getTauBranch(branchNum, isPWave)
-                            .path(currArrival.getRayParam(),
-                                  ((Boolean)downGoing.get(i)).booleanValue(),
-                                  tMod.getSlownessModel());
-                } catch(SlownessModelException e) {
-                    // shouldn't happen but...
-                    throw new RuntimeException("SeismicPhase.calcPath: Caught SlownessModelException. "
-                            , e);
-                }
-                if(tempTimeDist != null) {
-                    pathList.add(tempTimeDist);
-                    for (int j = 0; j < tempTimeDist.length; j++) {
-                        if (tempTimeDist[j].getDistDeg() < 0) {
-                            throw new RuntimeException("Path is backtracking, no possible: "+j+" ("+tempTimeDist[j]+")");
-                        }
-                    }
-                }
-                /*
-                 * Here we worry about the special case for head and
-                 * diffracted waves.
-                 */
-                if(branchNum == tMod.cmbBranch - 1 && i < branchSeq.size()-1
-                        && ((Integer)branchSeq.get(i + 1)).intValue() == tMod.cmbBranch - 1
-                        && (name.indexOf("Pdiff") != -1 || name.indexOf("Sdiff") != -1)) {
-                    TimeDist[] diffTD = new TimeDist[1];
-                    diffTD[0] = new TimeDist(currArrival.getRayParam(),
-                                             (currArrival.getDist() - dist[0])
-                                                     * currArrival.getRayParam(),
-                                             currArrival.getDist()
-                                                     - dist[0],
-                                             tMod.cmbDepth);
-                    pathList.add(diffTD);
-                } else if(branchNum == tMod.mohoBranch  && i < branchSeq.size()-1
-                        && ((Integer)branchSeq.get(i + 1)).intValue() == tMod.mohoBranch 
-                        && (name.indexOf("Pn") != -1 || name.indexOf("Sn") != -1)) {
-                    int numFound = 0;
-                    int indexInString = -1;
-                    // can't have both Pn and Sn in a phase, so one of these
-                    // should do nothing
-                    while((indexInString = name.indexOf("Pn",
-                                                        indexInString + 1)) != -1) {
-                        numFound++;
-                    }
-                    while((indexInString = name.indexOf("Sn",
-                                                        indexInString + 1)) != -1) {
-                        numFound++;
-                    }
-                    TimeDist[] headTD = new TimeDist[1];
-                    headTD[0] = new TimeDist(currArrival.getRayParam(),
-                                             (currArrival.getDist() - dist[0])
-                                                     / numFound
-                                                     * currArrival.getRayParam(),
-                                             (currArrival.getDist() - dist[0])
-                                                     / numFound,
-                                             tMod.mohoDepth);
-                    pathList.add(headTD);
-                }
+        
+        while ((Math.abs(searchDist - trueDist) > refineDistToleranceRadian ) || outPath.isEmpty()) {
+        	pathList.clear();
+	        tempTimeDist[0] = new TimeDist(searchRayParam,
+	                                       0.0,
+	                                       0.0,
+	                                       tMod.getSourceDepth());
+	        pathList.add(tempTimeDist);
+	            for(int i = 0; i < branchSeq.size(); i++) {
+	                int branchNum = ((Integer)branchSeq.get(i)).intValue();
+	                boolean isPWave = ((Boolean)waveType.get(i)).booleanValue();
+	                if(DEBUG) {
+	                    System.out.println("i=" + i + " branchNum=" + branchNum
+	                            + " isPWave=" + isPWave + " downgoing="
+	                            + ((Boolean)downGoing.get(i)).booleanValue());
+	                }
+	                try {
+	                    tempTimeDist = tMod.getTauBranch(branchNum, isPWave)
+	                            .path(searchRayParam,
+	                                  ((Boolean)downGoing.get(i)).booleanValue(),
+	                                  tMod.getSlownessModel());
+	                } catch(SlownessModelException e) {
+	                    // shouldn't happen but...
+	                    throw new RuntimeException("SeismicPhase.calcPath: Caught SlownessModelException. "
+	                            , e);
+	                }
+	                if(tempTimeDist != null) {
+	                    pathList.add(tempTimeDist);
+	                    for (int j = 0; j < tempTimeDist.length; j++) {
+	                        if (tempTimeDist[j].getDistDeg() < 0) {
+	                            throw new RuntimeException("Path is backtracking, no possible: "+j+" ("+tempTimeDist[j]+")");
+	                        }
+	                    }
+	                }
+	                /*
+	                 * Here we worry about the special case for head and
+	                 * diffracted waves.
+	                 */
+	                if(branchNum == tMod.cmbBranch - 1 && i < branchSeq.size()-1
+	                        && ((Integer)branchSeq.get(i + 1)).intValue() == tMod.cmbBranch - 1
+	                        && (name.indexOf("Pdiff") != -1 || name.indexOf("Sdiff") != -1)) {
+	                    TimeDist[] diffTD = new TimeDist[1];
+	                    diffTD[0] = new TimeDist(searchRayParam,
+	                                             (currArrival.getDist() - dist[0])
+	                                                     * searchRayParam,
+	                                             currArrival.getDist()
+	                                                     - dist[0],
+	                                             tMod.cmbDepth);
+	                    pathList.add(diffTD);
+	                } else if(branchNum == tMod.mohoBranch  && i < branchSeq.size()-1
+	                        && ((Integer)branchSeq.get(i + 1)).intValue() == tMod.mohoBranch 
+	                        && (name.indexOf("Pn") != -1 || name.indexOf("Sn") != -1)) {
+	                    int numFound = 0;
+	                    int indexInString = -1;
+	                    // can't have both Pn and Sn in a phase, so one of these
+	                    // should do nothing
+	                    while((indexInString = name.indexOf("Pn",
+	                                                        indexInString + 1)) != -1) {
+	                        numFound++;
+	                    }
+	                    while((indexInString = name.indexOf("Sn",
+	                                                        indexInString + 1)) != -1) {
+	                        numFound++;
+	                    }
+	                    TimeDist[] headTD = new TimeDist[1];
+	                    headTD[0] = new TimeDist(searchRayParam,
+	                                             (currArrival.getDist() - dist[0])
+	                                                     / numFound
+	                                                     * searchRayParam,
+	                                             (currArrival.getDist() - dist[0])
+	                                                     / numFound,
+	                                             tMod.mohoDepth);
+	                    pathList.add(headTD);
+	                }
+	            }
+	            if (name.indexOf("kmps") != -1) {
+	                // kmps phases have no branches, so need to end them at the arrival distance
+	                TimeDist[] headTD = new TimeDist[1];
+	                headTD[0] = new TimeDist(searchRayParam,
+	                                         currArrival.getDist()
+	                                         * searchRayParam,
+	                                         currArrival.getDist(),
+	                                         0);
+	                pathList.add(headTD);
+	            }
+	            outPath.clear();
+	            cummulative = new TimeDist(searchRayParam,
+	                                                0.0,
+	                                                0.0,
+	                                                currArrival.getSourceDepth());
+	            prev = cummulative;
+	            numAdded = 0;
+	            for(int i = 0; i < pathList.size(); i++) {
+	                branchPath = (TimeDist[])pathList.get(i);
+	                for(int j = 0; j < branchPath.length; j++) {
+	                    prev = cummulative;
+	                    cummulative = new TimeDist(cummulative.getP(),
+	                                               cummulative.getTime()+branchPath[j].getTime(),
+	                                               cummulative.getDistRadian()+branchPath[j].getDistRadian(),
+	                                               branchPath[j].getDepth());
+	                    outPath.add(cummulative);
+	                    if (numAdded > 0 && cummulative.getDistRadian() < prev.getDistRadian()) {
+	                        throw new RuntimeException("Backtracking ray, not possible: "+numAdded+" "+cummulative+") < ("+prev+")");
+	                    }
+	                    numAdded++;
+	                }
+	            }
+            trueDist = outPath.get(outPath.size()-1).getDistRadian();
+
+            if ( (trueDist - prevDist) * (searchDist - trueDist ) >= 0. ) {
+            	searchRayParam += (searchDist - trueDist)
+            			* (prevRayParam - searchRayParam)
+    	                / (prevDist - trueDist);
+            } else { //occurs for small planets where distance sampling not good enough?
+            	throw new RuntimeException("Insufficient ray parameter sampling, probably due to a very small planet; or close to caustic.");
             }
-            if (name.indexOf("kmps") != -1) {
-                // kmps phases have no branches, so need to end them at the arrival distance
-                TimeDist[] headTD = new TimeDist[1];
-                headTD[0] = new TimeDist(currArrival.getRayParam(),
-                                         currArrival.getDist()
-                                         * currArrival.getRayParam(),
-                                         currArrival.getDist(),
-                                         0);
-                pathList.add(headTD);
-            }
-            List<TimeDist> outPath = new ArrayList<TimeDist>();
-            TimeDist cummulative = new TimeDist(currArrival.getRayParam(),
-                                                0.0,
-                                                0.0,
-                                                currArrival.getSourceDepth());
-            TimeDist prev = cummulative;
-            TimeDist[] branchPath;
-            int numAdded = 0;
-            for(int i = 0; i < pathList.size(); i++) {
-                branchPath = (TimeDist[])pathList.get(i);
-                for(int j = 0; j < branchPath.length; j++) {
-                    prev = cummulative;
-                    cummulative = new TimeDist(cummulative.getP(),
-                                               cummulative.getTime()+branchPath[j].getTime(),
-                                               cummulative.getDistRadian()+branchPath[j].getDistRadian(),
-                                               branchPath[j].getDepth());
-                    outPath.add(cummulative);
-                    if (numAdded > 0 && cummulative.getDistRadian() < prev.getDistRadian()) {
-                        throw new RuntimeException("Backtracking ray, not possible: "+numAdded+" "+cummulative+") < ("+prev+")");
-                    }
-                    numAdded++;
-                }
-            }
+            prevDist = trueDist; prevRayParam = cummulative.getP();
+            
+			if (searchRayParam <= 0.) {
+				throw new RuntimeException("Ray parameter interpolation failed.");
+			}
+        }
         return outPath;
     }
 

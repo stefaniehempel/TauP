@@ -49,6 +49,9 @@ import java.util.List;
  * 
  * 
  * @author H. Philip Crotwell
+ * 
+ * Modified for missing core structure. Adapted for most tiny planets (R<100.km).
+ * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class VelocityModel implements Cloneable, Serializable {
 
@@ -1264,6 +1267,12 @@ public class VelocityModel implements Cloneable, Serializable {
         boolean changeMade = false;
         VelocityLayer aboveLayer, belowLayer;
         double mohoMin = 65.0, cmbMin = radiusOfEarth, iocbMin = radiusOfEarth - 100.0;
+        if (iocbMin < 0.) { //for tiny bodies, SH
+        	iocbMin=.9*radiusOfEarth;
+        	if (cmbDepth>radiusOfEarth) cmbDepth=radiusOfEarth;
+        	if (iocbDepth>radiusOfEarth) iocbDepth=radiusOfEarth;
+        	if (mohoDepth<radiusOfEarth) mohoMin=Math.min(Math.min(cmbDepth,iocbDepth),mohoDepth*1.2);
+        }
         double tempMohoDepth = 0.0, tempCmbDepth = radiusOfEarth, tempIocbDepth = radiusOfEarth;
         // fake layer above surface
         VelocityLayer topLayer = getVelocityLayer(0);
@@ -1301,7 +1310,7 @@ public class VelocityModel implements Cloneable, Serializable {
         // iocb is either below a fluid layer or is equal to cmb or center of earth
         // belowLayer is bottommost layer, so belowLayer.botDepth == radius of earth
         if(belowLayer.getBotDepth()  == tempCmbDepth || (belowLayer.getBotSVelocity() == 0.0
-                && belowLayer.getTopSVelocity() > 0.0
+                && belowLayer.getTopSVelocity() == 0.0 //SH correcting former typo in comparison sign
                 && Math.abs(iocbDepth - belowLayer.getBotDepth()) < iocbMin)) {
             tempIocbDepth = belowLayer.getBotDepth();
             iocbMin = Math.abs(iocbDepth - belowLayer.getBotDepth());
