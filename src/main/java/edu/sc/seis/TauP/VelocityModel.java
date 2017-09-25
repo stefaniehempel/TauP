@@ -1269,8 +1269,8 @@ public class VelocityModel implements Cloneable, Serializable {
         double mohoMin = 65.0, cmbMin = radiusOfEarth, iocbMin = radiusOfEarth - 100.0;
         if (iocbMin < 0.) { //for tiny bodies, SH
         	iocbMin=.9*radiusOfEarth;
-        	if (cmbDepth>radiusOfEarth) cmbDepth=radiusOfEarth;
         	if (iocbDepth>radiusOfEarth) iocbDepth=radiusOfEarth;
+        	if (cmbDepth>radiusOfEarth) cmbDepth=Math.min(iocbDepth,radiusOfEarth);
         	if (mohoDepth<radiusOfEarth) mohoMin=Math.min(Math.min(cmbDepth,iocbDepth),mohoDepth*1.2);
         }
         double tempMohoDepth = 0.0, tempCmbDepth = radiusOfEarth, tempIocbDepth = radiusOfEarth;

@@ -144,7 +144,7 @@ public class TauP_Time {
                           e.getMessage());
             toolProps = new Properties();
         }
-        Outputs.configure(toolProps, outputPrecision); //SH
+        Outputs.configure(toolProps);
     }
 
     public TauP_Time(TauModel tMod) throws TauModelException {
@@ -452,6 +452,10 @@ public class TauP_Time {
             } else {
                 throw new TauModelException("Unable to load "+modelName);
             }
+            if (tMod.getRadiusOfEarth()<100.) { //SH
+            	outputPrecision = true;
+            	Outputs.configure(toolProps, outputPrecision);
+            }
     }
 
     /**
@@ -603,6 +607,9 @@ public class TauP_Time {
             } else if(dashEquals("time", args[i])) {
                 onlyPrintTime = true;
                 onlyPrintRayP = false;
+            } else if(dashEquals("prc", args[i])) { //SH
+            	outputPrecision = true;
+            	Outputs.configure(toolProps, outputPrecision);
             } else if(i < args.length - 1) {
                 if(dashEquals("mod", args[i]) || dashEquals("model", args[i])) {
                     toolProps.put("taup.model.name", args[i + 1]);
@@ -662,10 +669,6 @@ public class TauP_Time {
                     System.out.println("taup.depth.precision: "+toolProps.getProperty("taup.depth.precision"));
                     Outputs.configure(toolProps);
                     i++;
-                } else if(dashEquals("prc", args[i])) { //SH
-                	outputPrecision = true;
-                	Outputs.configure(toolProps, outputPrecision);
-                	i++;
                 } else if(i < args.length - 2) {
                     if(args[i].equalsIgnoreCase("-sta")
                             || args[i].equalsIgnoreCase("-station")) {
@@ -857,9 +860,9 @@ public class TauP_Time {
             	if (tempPhaseName.contains("m") || tempPhaseName.contains("g") || tempPhaseName.contains("n")) alreadyAdded=true; 
             }
             if (tMod.getCmbDepth() == tMod.getIocbDepth()) { //for models without outer core
-            	if (tempPhaseName.contains("K") || tempPhaseName.contains("k")) alreadyAdded=true;
+            	if (tempPhaseName.contains("K") || tempPhaseName.contains("diff") || tempPhaseName.contains("k")) alreadyAdded=true;
             	if (tMod.getCmbDepth() == tMod.getRadiusOfEarth()) { //for models without core at all
-            		if (tempPhaseName.contains("diff") || tempPhaseName.contains("c")) alreadyAdded=true;
+            		if (tempPhaseName.contains("c")) alreadyAdded=true;
             	}
             	else { //solid core only
             		if (!(tempPhaseName.contains("I") || tempPhaseName.contains("J") || tempPhaseName.contains("i"))) {
@@ -920,6 +923,9 @@ public class TauP_Time {
                         .length();
             }
         }
+        
+        String prcSpace=""; if (outputPrecision) prcSpace="    "; //SH
+        
         Format phaseFormat = new Format("%-" + maxNameLength + "s");
         Format phasePuristFormat = new Format("%-" + maxPuristNameLength + "s");
         if(!(onlyPrintRayP || onlyPrintTime)) {
@@ -928,10 +934,10 @@ public class TauP_Time {
                 modelLine += "  Receiver Depth: "+getReceiverDepth()+" km";
             }
             out.println(modelLine);
-            String lineOne = "Distance   Depth   " + phaseFormat.form("Phase")
-                    + "   Travel    Ray Param  Takeoff  Incident  Purist    Purist";
-            String lineTwo = "  (deg)     (km)   " + phaseFormat.form("Name ")
-                    + "   Time (s)  p (s/deg)   (deg)    (deg)   Distance   Name ";
+            String lineOne = "Distance   "+prcSpace+"Depth   " + prcSpace + phaseFormat.form("Phase")
+                    + prcSpace + "   Travel    "+prcSpace+"Ray Param  "+prcSpace+"Takeoff  "+prcSpace+"Incident  "+prcSpace+"Purist    Purist";
+            String lineTwo = "  (deg)     "+prcSpace+"(km)   " + prcSpace + phaseFormat.form("Name ")
+                    + prcSpace + "   Time (s)  "+prcSpace+"p (s/deg)   "+prcSpace+"(deg)    "+prcSpace+"(deg)   "+prcSpace+"Distance   Name ";
             if (relativePhaseName != "") {
                 lineOne += " Relative to";
                 for (int s=0; s<(11-relativePhaseName.length())/2;s++) {

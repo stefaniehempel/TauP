@@ -44,6 +44,9 @@ import java.util.List;
  * 
  * @author H. Philip Crotwell
  * 
+ * Adapted for most tiny planets (R<100.km).
+ * S. Hempel, ISAE Toulouse Sep 2017
+ * 
  */
 public class TauP_Table extends TauP_Time {
 
@@ -54,6 +57,10 @@ public class TauP_Table extends TauP_Time {
     protected int outputType = TauP_Table.GENERIC;
 
     protected String headerFile;
+    
+    /* introduced to adapt depth choices by flag or depending on planet size, SH */
+    protected double maxDepth = Double.MAX_VALUE;
+    protected double depthInc = Double.MAX_VALUE;
 
     protected double[] depths = {0.00f,
                                  1.00f,
@@ -390,6 +397,49 @@ public class TauP_Table extends TauP_Time {
             }
         }
     }
+    /* adapting depth and distance list flexibly
+     * depth adaptation required for planets < size of Earth, depth of MTZ
+     * SH
+     */
+    public void adaptDepthDistance() {
+    	// adapt depth list for smaller planets
+    	double radiusOfPlanet = tMod.getRadiusOfEarth();
+    	// consider sourceDepth given by -h flag as maxDepth
+    	maxDepth = Math.min(depths[depths.length-1], radiusOfPlanet);
+    	if ( getSourceDepth() > 0. ) maxDepth = Math.min(getSourceDepth(), maxDepth);
+    	double[] newDepths = depths;
+    	// find maxDepth
+    	if ( maxDepth < depths[depths.length-1]) {
+    		// find actual maximum, assuming sorted depth list
+			int maxPos=0;
+    		while (depths[maxPos] <= maxDepth) maxPos++;	    			
+			maxDepth = Math.min(maxDepth, depths[maxPos]);
+			if ( (maxDepth > depths[maxPos-1]) && (maxDepth < depths[maxPos]) ) {
+				depths[maxPos]=maxDepth;
+				maxPos++;
+			}
+			newDepths = new double[maxPos]; //this may be done double, more efficiency possible!
+			System.arraycopy(depths, 0, newDepths, 0, maxPos);
+    	}
+    	// adapt depths increment for tiny planets or if given
+    	if ( ( radiusOfPlanet < 5. && headerFile == null ) || depthInc < Double.MAX_VALUE || maxDepth > depths[depths.length-1]) {
+    		depthInc = Math.min(Math.pow(10,Math.floor(Math.log10(radiusOfPlanet/10))), depthInc); // for tiny planets sample depths at least at 1/10th
+    		int len = Math.max(1, (int) (maxDepth/depthInc) + 1);
+    		newDepths = new double[len];
+    		for (int i=1; i<len; i++) {
+    			newDepths[i]=newDepths[i-1]+depthInc;
+    		}
+    	}
+    	// exclude center of planet from sampling²
+    	int len = newDepths.length-1;
+    	if (radiusOfPlanet-newDepths[len]<0.001) {
+    		depths = new double[len];
+    		System.arraycopy(newDepths, 0, depths, 0, len);
+    	}
+    	else depths = newDepths;
+    	
+    	//TBD distance adaption
+    }
 
     public void start() throws TauModelException, TauPException, IOException {
         switch(outputType){
@@ -412,6 +462,21 @@ public class TauP_Table extends TauP_Time {
     
     protected void genericTable(PrintWriter out) throws TauModelException,
             IOException {
+    	int maxNameLength = 5;
+        int maxPuristNameLength = 5;
+        for(int j = 0; j < arrivals.size(); j++) {
+            if(((Arrival)arrivals.get(j)).getName().length() > maxNameLength) {
+                maxNameLength = ((Arrival)arrivals.get(j)).getName()
+                        .length();
+            }
+            if(((Arrival)arrivals.get(j)).getPuristName().length() > maxPuristNameLength) {
+                maxPuristNameLength = ((Arrival)arrivals.get(j)).getPuristName()
+                        .length();
+            }
+        }
+        Format phaseFormat = new Format("%-" + maxNameLength + "s");
+        Format phasePuristFormat = new Format("%-" + maxPuristNameLength + "s");
+    	
         for(int depthNum = 0; depthNum < depths.length; depthNum++) {
             depthCorrect(depths[depthNum], getReceiverDepth());
             for(int distNum = 0; distNum < distances.length; distNum++) {
@@ -422,7 +487,7 @@ public class TauP_Table extends TauP_Time {
                     out.print(modelName + " "
                                    + outForms.formatDistance(moduloDist) + " "
                                    + outForms.formatDepth(depth) + " ");
-                    out.print(currArrival.getName());
+                    out.print(phaseFormat.form(currArrival.getName()));
                     out.print("  "
                                    + outForms.formatTime(currArrival.getTime())
                                    + "  ");
@@ -430,7 +495,7 @@ public class TauP_Table extends TauP_Time {
                                                            * currArrival.getRayParam())
                                                            + "   ");
                     out.print(outForms.formatDistance(currArrival.getDistDeg()));
-                    out.print("  " + currArrival.getPuristName());
+                    out.print(" " + phasePuristFormat.form(currArrival.getPuristName()));
                     out.println();
                 }
             }
@@ -521,6 +586,9 @@ public class TauP_Table extends TauP_Time {
                 outputType = LOCSAT;
             } else if(dashEquals("generic", leftOverArgs[i])) {
                 outputType = GENERIC;
+            } else if(dashEquals("dz", leftOverArgs[i])) {
+                depthInc = Double.parseDouble(leftOverArgs[i+1]);
+                i++;
             } else if(dashEquals("help", leftOverArgs[i])) {
                 noComprendoArgs[numNoComprendoArgs++] = leftOverArgs[i];
             } else {
@@ -544,6 +612,7 @@ public class TauP_Table extends TauP_Time {
             String[] noComprendoArgs = me.parseCmdLineArgs(args);
             printNoComprendoArgs(noComprendoArgs);
             me.init();
+            me.adaptDepthDistance();
             me.start();
         } catch(TauModelException e) {
             System.err.println("Caught TauModelException: " + e.getMessage());

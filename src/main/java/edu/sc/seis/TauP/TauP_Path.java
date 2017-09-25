@@ -145,10 +145,6 @@ public class TauP_Path extends TauP_Pierce {
             out.write("psxy -P -R -K -O -JP -m -A >> " + psFile + " <<END\n");
         }
 		double radiusOfEarth = getTauModelDepthCorrected().getRadiusOfEarth();
-		if (radiusOfEarth < 100.) {
-			outputPrecision = true; //SH
-			Outputs.configure(toolProps,true);
-		}
 		boolean longWayRound;
 		for (int i = 0; i < arrivals.size(); i++) {
 		    Arrival currArrival = (Arrival) arrivals.get(i);

@@ -54,7 +54,7 @@ public class Outputs {
         latLonFormat = new Format(formString);
         
         //SH
-        formString = "%8.6f";
+        formString = "%12.6f";
         highPrecision = new Format(formString);
         
         if (precision) {
@@ -112,5 +112,5 @@ public class Outputs {
 
     protected static Format latLonFormat = new Format("%8.2f");
     
-    protected static Format highPrecision = new Format("8.6f");
+    protected static Format highPrecision = new Format("12.6f");
 } // Outputs
