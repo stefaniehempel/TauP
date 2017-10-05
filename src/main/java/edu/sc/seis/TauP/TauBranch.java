@@ -28,6 +28,9 @@ import java.io.Serializable;
  * 
  * @version 1.1.3 Wed Jul 18 15:00:35 GMT 2001
  * @author H. Philip Crotwell
+ * 
+ * Modified to compute dddp for amplitude estimation.
+ * S. Hempel/ ISAE Toulouse Sep 2017
  */
 public class TauBranch implements Serializable, Cloneable {
 
@@ -75,6 +78,9 @@ public class TauBranch implements Serializable, Cloneable {
 
     /** Holds tau evaluated at the ith ray parameter for this branch. */
     protected double[] tau;
+    
+    /** Holds dddp evaluated at the ith ray parameter for this branch. */
+    protected double[] dddp;
 
     // Constructors --------------------------------------------------------
     public TauBranch(boolean isPWave,
@@ -85,7 +91,8 @@ public class TauBranch implements Serializable, Cloneable {
                      double minRayParam,
                      double[] dist,
                      double[] time,
-                     double[] tau) {
+                     double[] tau,
+                     double[] dddp) {
         this.isPWave = isPWave;
         this.topDepth = topDepth;
         this.botDepth = botDepth;
@@ -95,6 +102,7 @@ public class TauBranch implements Serializable, Cloneable {
         this.dist = dist;
         this.time = time;
         this.tau = tau;
+        this.dddp = dddp;
     }
     
     public TauBranch(double topDepth, double botDepth, boolean isPWave) {
@@ -146,6 +154,10 @@ public class TauBranch implements Serializable, Cloneable {
      */
     public double[] getDist() {
         return (double[])dist.clone();
+    }
+    
+    public double getDddp(int i) {
+        return dddp[i];
     }
 
     /**
@@ -258,11 +270,13 @@ public class TauBranch implements Serializable, Cloneable {
         tau = new double[rayParams.length];
         dist = new double[rayParams.length];
         time = new double[rayParams.length];
+        dddp = new double[rayParams.length];
         for(int rayNum = 0; rayNum < rayParams.length; rayNum++) {
             p = rayParams[rayNum];
             timeDist = calcTimeDist(sMod, topLayerNum, botLayerNum, p);
             dist[rayNum] = timeDist.getDistRadian();
             time[rayNum] = timeDist.getTime();
+            dddp[rayNum] = timeDist.getDddp(); 
             tau[rayNum] = time[rayNum] - p * dist[rayNum];
             if(DEBUG &&( (rayNum % ((int)rayParams.length / 10) == 0) || p == minRayParam || p == maxRayParam)) {
                 System.out.println(p+" "+rayNum +", "+dist[rayNum]+" "+time[rayNum]+" ");
@@ -371,6 +385,7 @@ public class TauBranch implements Serializable, Cloneable {
         dist[index] = td.getDistRadian();
         time[index] = td.getTime();
         tau[index] = td.getTime() - rayParam * td.getDistRadian();
+        dddp[index] = td.getDddp();
     }
 
     /**
@@ -514,12 +529,14 @@ public class TauBranch implements Serializable, Cloneable {
         botBranch.dist = new double[arrayLength];
         botBranch.time = new double[arrayLength];
         botBranch.tau = new double[arrayLength];
+        botBranch.dddp = new double[arrayLength];
         if(indexP == -1) {
             // then both are -1 so no new ray parameters added
             for(int i = 0; i < dist.length; i++) {
                 botBranch.dist[i] = dist[i] - topBranch.dist[i];
                 botBranch.time[i] = time[i] - topBranch.time[i];
                 botBranch.tau[i] = tau[i] - topBranch.tau[i];
+                botBranch.dddp[i] = dddp[i] - topBranch.dddp[i];
             }
         } else {
             if(indexS == -1) {
@@ -528,15 +545,18 @@ public class TauBranch implements Serializable, Cloneable {
                     botBranch.dist[i] = dist[i] - topBranch.dist[i];
                     botBranch.time[i] = time[i] - topBranch.time[i];
                     botBranch.tau[i] = tau[i] - topBranch.tau[i];
+                    botBranch.dddp[i] = dddp[i] - topBranch.dddp[i];
                 }
                 botBranch.dist[indexP] = timeDistP.getDistRadian();
                 botBranch.time[indexP] = timeDistP.getTime();
                 botBranch.tau[indexP] = timeDistP.getTime() - PRayParam
                         * timeDistP.getDistRadian();
+                botBranch.dddp[indexP] = timeDistP.getDddp(); 
                 for(int i = indexP+1; i < topBranch.dist.length; i++) {
                     botBranch.dist[i] = dist[i-1] - topBranch.dist[i];
                     botBranch.time[i] = time[i-1] - topBranch.time[i];
                     botBranch.tau[i] = tau[i-1] - topBranch.tau[i];
+                    botBranch.dddp[i] = dddp[i-1] - topBranch.dddp[i]; 
                 }
             } else {
                 // both indexP and indexS != -1 so we have two new samples
@@ -544,24 +564,29 @@ public class TauBranch implements Serializable, Cloneable {
                     botBranch.dist[i] = dist[i] - topBranch.dist[i];
                     botBranch.time[i] = time[i] - topBranch.time[i];
                     botBranch.tau[i] = tau[i] - topBranch.tau[i];
+                    botBranch.dddp[i] = dddp[i] - topBranch.dddp[i]; 
                 }
                 botBranch.dist[indexS] = timeDistS.getDistRadian();
                 botBranch.time[indexS] = timeDistS.getTime();
                 botBranch.tau[indexS] = timeDistS.getTime() - SRayParam
                         * timeDistS.getDistRadian();
+                botBranch.dddp[indexS] = timeDistS.getDddp(); 
                 for(int i = indexS+1; i < indexP; i++) {
                     botBranch.dist[i] = dist[i-1] - topBranch.dist[i];
                     botBranch.time[i] = time[i-1] - topBranch.time[i];
                     botBranch.tau[i] = tau[i-1] - topBranch.tau[i];
+                    botBranch.dddp[i] = dddp[i-1] - topBranch.dddp[i]; 
                 }
                 botBranch.dist[indexP] = timeDistP.getDistRadian();
                 botBranch.time[indexP] = timeDistP.getTime();
                 botBranch.tau[indexP] = timeDistP.getTime() - PRayParam
                         * timeDistP.getDistRadian();
+                botBranch.dddp[indexP] = timeDistP.getDddp(); 
                 for(int i = indexP+1; i < topBranch.dist.length; i++) {
                     botBranch.dist[i] = dist[i-2] - topBranch.dist[i];
                     botBranch.time[i] = time[i-2] - topBranch.time[i];
                     botBranch.tau[i] = tau[i-2] - topBranch.tau[i];
+                    botBranch.dddp[i] = dddp[i-2] - topBranch.dddp[i]; 
                 }
             }
         }
@@ -584,6 +609,11 @@ public class TauBranch implements Serializable, Cloneable {
         newTau[index] = 0.0;
         System.arraycopy(tau, index, newTau, index + 1, tau.length - index);
         tau = newTau;
+        double[] newDddp = new double[dddp.length + 1];
+        System.arraycopy(dddp, 0, newDddp, 0, index);
+        newDddp[index] = 0.0;
+        System.arraycopy(dddp, index, newDddp, index + 1, dddp.length - index);
+        dddp = newDddp;
     }
 
     public TimeDist[] path(double rayParam,
@@ -716,6 +746,10 @@ public class TauBranch implements Serializable, Cloneable {
         for(int i = 0; i < tau.length; i++) {
             dos.writeDouble(tau[i]);
         }
+        dos.writeInt(dddp.length);
+        for(int i = 0; i < dddp.length; i++) {
+            dos.writeDouble(dddp[i]);
+        }
     }
 
     public static TauBranch readFromStream(DataInputStream dis)
@@ -746,6 +780,11 @@ public class TauBranch implements Serializable, Cloneable {
         for(int i = 0; i < tBranch.tau.length; i++) {
             tBranch.tau[i] = dis.readDouble();
         }
+        length = dis.readInt();
+        tBranch.dddp = new double[length];
+        for(int i = 0; i < tBranch.dddp.length; i++) {
+            tBranch.dddp[i] = dis.readDouble();
+        }
         return tBranch;
     }
 
@@ -769,7 +808,7 @@ public class TauBranch implements Serializable, Cloneable {
                              maxRayParam,
                              minTurnRayParam,
                              minRayParam,
-                             dist, time, tau);
+                             dist, time, tau, dddp);
     }
 
     public String toString() {

@@ -405,8 +405,9 @@ public class TauP_Table extends TauP_Time {
     	// adapt depth list for smaller planets
     	double radiusOfPlanet = tMod.getRadiusOfEarth();
     	// consider sourceDepth given by -h flag as maxDepth
-    	maxDepth = Math.min(depths[depths.length-1], radiusOfPlanet);
-    	if ( getSourceDepth() > 0. ) maxDepth = Math.min(getSourceDepth(), maxDepth);
+    	maxDepth = Math.min(radiusOfPlanet, maxDepth);
+    	maxDepth = Math.min(depths[depths.length-1], maxDepth);
+//    	if ( getSourceDepth() > 0. ) maxDepth = Math.min(getSourceDepth(), maxDepth);
     	double[] newDepths = depths;
     	// find maxDepth
     	if ( maxDepth < depths[depths.length-1]) {
@@ -441,7 +442,7 @@ public class TauP_Table extends TauP_Time {
     	//TBD distance adaption
     }
 
-    public void start() throws TauModelException, TauPException, IOException {
+    public void start() throws TauModelException, TauPException, IOException, SlownessModelException, VelocityModelException {
         switch(outputType){
             case TauP_Table.GENERIC:
                 genericTable(getWriter());
@@ -461,7 +462,7 @@ public class TauP_Table extends TauP_Time {
     }
     
     protected void genericTable(PrintWriter out) throws TauModelException,
-            IOException {
+            IOException, SlownessModelException, VelocityModelException {
     	int maxNameLength = 5;
         int maxPuristNameLength = 5;
         for(int j = 0; j < arrivals.size(); j++) {
@@ -494,6 +495,13 @@ public class TauP_Table extends TauP_Time {
                     out.print(outForms.formatRayParam(Math.PI / 180.0
                                                            * currArrival.getRayParam())
                                                            + "   ");
+                    if (amplOutputBasic) { //SH
+                    	out.print(outForms.formatScientific(currArrival.getDddp()));
+                    	out.print(" " + outForms.formatScientific(0.)); //just fixing output
+                    	out.print(" " + outForms.formatScientific(0.));
+                    	out.print(" " + outForms.formatScientific(currArrival.getTstar()));
+                    	out.print(" " + outForms.formatDistance(currArrival.getTakeoffAngle()));
+                    }
                     out.print(outForms.formatDistance(currArrival.getDistDeg()));
                     out.print(" " + phasePuristFormat.form(currArrival.getPuristName()));
                     out.println();
@@ -504,7 +512,7 @@ public class TauP_Table extends TauP_Time {
     }
 
     protected void locsatTable(PrintWriter out) throws TauModelException,
-            IOException {
+            IOException, SlownessModelException, VelocityModelException {
         Format float15_4 = new Format("%15.4f");
         Format float7_2 = new Format("%7.2f");
         Format decimal7 = new Format("%-7d");
@@ -573,15 +581,18 @@ public class TauP_Table extends TauP_Time {
 
     public String[] parseCmdLineArgs(String[] args) throws IOException {
         int i = 0;
-        String[] leftOverArgs;
+        String[] leftOverArgs = args;
         int numNoComprendoArgs = 0;
-        leftOverArgs = super.parseCmdLineArgs(args);
+        // prioritize local assignments, SH - not worth the mess?
         String[] noComprendoArgs = new String[leftOverArgs.length];
         while(i < leftOverArgs.length) {
             if(dashEquals("header", leftOverArgs[i])
                     && i < leftOverArgs.length - 1) {
                 headerFile = leftOverArgs[i + 1];
                 i++;
+            } else if(dashEquals("h", leftOverArgs[i])) {
+            	maxDepth = Double.parseDouble(leftOverArgs[i+1]);
+            	i++;
             } else if(dashEquals("locsat", leftOverArgs[i])) {
                 outputType = LOCSAT;
             } else if(dashEquals("generic", leftOverArgs[i])) {
@@ -596,16 +607,14 @@ public class TauP_Table extends TauP_Time {
             }
             i++;
         }
-        if(numNoComprendoArgs > 0) {
-            String[] temp = new String[numNoComprendoArgs];
-            System.arraycopy(noComprendoArgs, 0, temp, 0, numNoComprendoArgs);
-            return temp;
-        } else {
-            return new String[0];
-        }
+        
+        args = new String[numNoComprendoArgs];
+        System.arraycopy(noComprendoArgs, 0, args, 0, numNoComprendoArgs);
+        
+        return super.parseCmdLineArgs(args);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SlownessModelException, VelocityModelException {
         TauP_Table me;
         try {
             me = new TauP_Table();

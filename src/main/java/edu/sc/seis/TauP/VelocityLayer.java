@@ -126,7 +126,7 @@ public class VelocityLayer implements Cloneable, Serializable {
                          double botQs) {
         if(topPVelocity <= 0) {
             throw new IllegalArgumentException("topPVelocity must be positive: "
-                    + topPVelocity+" in layer "+myLayerNumber+" topDepth "+topDepth+" topS"+topSVelocity+" botDepth "+botDepth+" botP "+botPVelocity+" botS"+botSVelocity);
+                    + topPVelocity);
         }
         if(botPVelocity <= 0) {
             throw new IllegalArgumentException("botPVelocity must be positive: "
@@ -238,6 +238,16 @@ public class VelocityLayer implements Cloneable, Serializable {
                         / (getBotDepth() - getTopDepth());
                 answer = slope * (depth - getTopDepth()) + getTopDensity();
                 break;
+            case 'Q':
+            	slope = (getBotQp() - getTopQp())
+            			/ (getBotDepth() - getTopDepth());
+            	answer = slope * (depth - getTopDepth()) + getTopQp();
+            	break;
+            case 'q':
+            	slope = (getBotQs() - getTopQs())
+            			/ (getBotDepth() - getTopDepth());
+            	answer = slope * (depth - getTopDepth()) + getTopQs();
+            	break;
             default:
                 System.out.println("I don't understand this material property: "
                         + materialProperty + "\nUse one of P p S s R r D d");

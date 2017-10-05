@@ -36,6 +36,9 @@ import java.time.Duration;
  * 
  * @author H. Philip Crotwell
  * 
+ * Modified to account for dddp,  amplitude computation.
+ * S. Hempel/ ISAE Toulouse Sep 2017
+ * 
  */
 public class Arrival {
 
@@ -87,7 +90,51 @@ public class Arrival {
         this.takeoffAngle = takeoffAngle;
         this.incidentAngle = incidentAngle;
     }
-
+    
+    public Arrival(SeismicPhase phase,
+            double time,
+            double dist,
+            double rayParam,
+            int rayParamIndex,
+            String name,
+            String puristName,
+            double sourceDepth,
+            double takeoffAngle,
+            double incidentAngle,
+            double dddp,
+            double amplFact,
+            double RTFact,
+            double tstar,
+            double dtel,
+            double dtdh,
+            double corr,
+            double corrError) {
+    	if (Double.isNaN(time)) {
+            throw new IllegalArgumentException("Time cannot be NaN");
+        }
+        if (rayParamIndex < 0) {
+            throw new IllegalArgumentException("rayParamIndex cannot be negative: "+rayParamIndex);
+        }
+		this.phase = phase;
+		this.time = time;
+		this.dist = dist;
+		this.rayParam = rayParam;
+		this.rayParamIndex = rayParamIndex;
+		this.name = name;
+		this.puristName = puristName;
+		this.sourceDepth = sourceDepth;
+		this.takeoffAngle = takeoffAngle;
+		this.incidentAngle = incidentAngle;
+		this.amplFact = amplFact;
+		this.RTFact = RTFact;
+		this.dtdh = dtdh;
+		this.dddp = dddp;
+		this.dtel = dtel;
+		this.tstar = tstar;
+		this.corr = corr;
+		this.corrError = corrError;
+    }
+    
     /** phase that generated this arrival. */
     private SeismicPhase phase;
 
@@ -118,6 +165,25 @@ public class Arrival {
     
     private double takeoffAngle;
     
+    //SH
+    private double RTFact;
+    
+    private double amplFact;
+    
+    private double dtdh;
+    
+    private double dddp;
+    
+    private double dtel;
+    
+    private double corr;
+    
+    private double corrError;
+    
+    private double[] tau = new double[3];
+    
+    private double tstar;
+    
     // get set methods
     /** @return the phase used to calculate this arrival. */
     public SeismicPhase getPhase() {
@@ -138,7 +204,79 @@ public class Arrival {
     public double getDist() {
         return dist;
     }
+    
+    //SH
+    public double getAmplFact() {
+		return this.amplFact;
+    }
+    
+    public double getRTFact() {
+		return this.RTFact;
+    }
+    
+    public double getDtdh() {
+    	return this.dtdh;
+    }
+    
+    public double getDddp() {
+    	return this.dddp;
+    }
+    
+    public double[] getTaus() {
+    	return this.tau;
+    }
+    
+    public double getDtel() {
+    	return this.dtel;
+    }
+    
+    public double getTstar() {
+    	return this.tstar;
+    }
+    
+    public double getCorr() {
+	return this.corr;
+    }
+    
+    public double getCorrError() {
+    	return this.corrError;
+    }
+    
+    public void setDtdh(double dtdh) {
+    	this.dtdh = dtdh;
+    }
 
+    public void setDddp(double dddp) {
+    	this.dddp = dddp;
+    }
+    
+    public void setCorr(double corr) {
+    	this.corr = corr;
+    }
+    
+    public void setCorrError(double corrError) {
+    	this.corrError = corrError;
+    }
+    
+    public void setTaus(double[] tau) {
+    	for (int i=0; i<3; i++) {
+    		this.tau[i] = tau[i];
+    	}
+    }
+    public void setTaus(double tau0, double tau1, double tau2) {
+		this.tau[0] = tau0;
+		this.tau[1] = tau1;
+		this.tau[2] = tau2;
+    }
+    
+    public void setDtel(double dtel) {
+    	this.dtel = dtel; 
+    }
+    
+    public void setTstar(double tstar) {
+    	this.tstar = tstar; 
+    }
+    
     /**
      * returns travel distance in degrees.
      */
@@ -168,6 +306,10 @@ public class Arrival {
             moduloDist = 360 - moduloDist;
         }
         return moduloDist;
+    }
+    
+    public void flipDistance() {
+    	this.dist = this.getDist() * -1.;
     }
 
     /** returns ray parameter in seconds per radian */
@@ -227,10 +369,12 @@ public class Arrival {
     }
 
     public String toString() {
+    	
         String desc =  Outputs.formatDistance(getModuloDistDeg()) + Outputs.formatDepth(getSourceDepth()) + "   " + getName()
                 + "  " + Outputs.formatTime(getTime()) + "  " + Outputs.formatRayParam(Math.PI / 180.0 * getRayParam())
                 + "  " + Outputs.formatDistance(getTakeoffAngle()) + " " + Outputs.formatDistance(getIncidentAngle())
-                + " " + Outputs.formatDistance(getDistDeg())+" "+getRayParamIndex();
+                + " " + Outputs.formatDistance(getDistDeg())+" "+getRayParamIndex()
+                + " " + Outputs.formatScientific(getDddp());
         if (getName().equals(getPuristName())) {
             desc += "   = ";
         } else {

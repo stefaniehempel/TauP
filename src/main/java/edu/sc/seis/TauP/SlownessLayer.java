@@ -35,6 +35,10 @@ import java.io.Serializable;
  * 
  * 
  * @author H. Philip Crotwell
+ * 
+ * Modified to compute dddp and obtain mpps for asphericity correction.
+ * S. Hempel/ ISAE Toulouse Sep 2017
+ * 
  */
 public class SlownessLayer implements Serializable {
 
@@ -127,6 +131,44 @@ public class SlownessLayer implements Serializable {
 
     public double getBotDepth() {
         return botDepth;
+    }
+    
+    /** 
+     * returns top mpp for asphericity and dddp computation, SH
+     */
+    public double getTopMpp ( double p ) {
+        if ((getTopP() - p) > 1e-6) {
+                return Math.sqrt((getTopP() * getTopP() - p * p));
+        }
+        else {
+                return 0;
+        }
+    }
+
+    /** 
+     * returns bottom mpp for asphericity and dddp computation, SH
+     */
+    public double getBotMpp ( double p ) {
+        if ((getBotP() - p) > 1e-6) { //improve here!
+                return Math.sqrt((getBotP() * getBotP() - p * p));
+        }
+        else {
+                return 0;
+        }
+    }
+    
+    /** 
+     * returns B exponent of Bullen interpolant for asphericity and dddp computation, SH
+     */
+    public double getB ( double radiusOfEarth ) {
+        if (radiusOfEarth>getBotDepth()) {
+                return Math.log(getTopP() / getBotP())
+                / Math.log((radiusOfEarth - getTopDepth())
+                        / (radiusOfEarth - getBotDepth()));
+        }
+        else {
+                return 1.;
+        }
     }
 
     /** Is the layer a zero thickness layer, ie a total reflection? */
@@ -233,23 +275,28 @@ public class SlownessLayer implements Serializable {
             outDepth = getTopDepth();
             }
         if(getTopDepth() == getBotDepth()) {
-            return new TimeDist(p, 0.0, 0.0, outDepth);
+            return new TimeDist(p, 0.0, 0.0, outDepth, 0.0);
         }
         // only do bullen radial slowness if the layer is not too thin
         // here we use 1 micron = .000000001
         // just return 0 in this case
         if(getBotDepth() - getTopDepth() < .000000001) {
-            return new TimeDist(p, 0.0, 0.0, outDepth);
+            return new TimeDist(p, 0.0, 0.0, outDepth, 0.0);
         }
-        double B = Math.log(getTopP() / getBotP())
-                / Math.log((radiusOfEarth - getTopDepth())
-                        / (radiusOfEarth - getBotDepth()));
-        double sqrtTopTopMpp = Math.sqrt(getTopP() * getTopP() - p * p);
-        double sqrtBotBotMpp = Math.sqrt(getBotP() * getBotP() - p * p);
+        double B = getB(radiusOfEarth);//SH to former Math.log(getTopP() / getBotP())
+//                / Math.log((radiusOfEarth - getTopDepth())
+//                        / (radiusOfEarth - getBotDepth()));
+        double sqrtTopTopMpp = getTopMpp(p);//SH to former Math.sqrt(getTopP() * getTopP() - p * p);
+        double sqrtBotBotMpp = getBotMpp(p);//SH to former Math.sqrt(getBotP() * getBotP() - p * p);
         double distRadian = (Math.atan2(p, sqrtBotBotMpp) - Math.atan2(p,
                                                                    sqrtTopTopMpp))
                 / B;
         double time = (sqrtTopTopMpp - sqrtBotBotMpp) / B;
+        double dddp = 0.0;
+        if (getBotP()-p>1e-6) dddp = - 1 / B * (1/sqrtTopTopMpp - 1/sqrtBotBotMpp);
+        else {
+                dddp = - 1 / B * (1/sqrtTopTopMpp);// - 1/sqrtBotBotMpp);
+        }
         if(distRadian < 0.0 || time < 0.0
                 || Double.isNaN(time) || Double.isNaN(distRadian)) {
             throw new SlownessModelException("timedist <0.0 or NaN: "
@@ -259,7 +306,7 @@ public class SlownessLayer implements Serializable {
                     + getTopP() + "\n botP = " + getBotP() + "\n B = " + B
                     + " " + toString());
         }
-        return new TimeDist(p, time, distRadian, outDepth);
+        return new TimeDist(p, time, distRadian, outDepth, dddp);
     }
 
     /**

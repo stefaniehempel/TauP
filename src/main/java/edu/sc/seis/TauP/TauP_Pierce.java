@@ -187,7 +187,7 @@ public class TauP_Pierce extends TauP_Time {
     }
 
     @Override
-    public void calculate(double degrees) throws TauModelException {
+    public void calculate(double degrees) throws TauModelException, SlownessModelException, IOException, VelocityModelException {
         super.calculate(degrees);
         for (Arrival arrival : getArrivals()) {
             arrival.getPierce(); // side effect of calculating pierce points
@@ -375,10 +375,12 @@ public class TauP_Pierce extends TauP_Time {
     /**
      * Allows TauP_Pierce to run as an application. Creates an instance of
      * TauP_Pierce. .
+     * @throws VelocityModelException 
+     * @throws SlownessModelException 
      */
     public static void main(String[] args) throws FileNotFoundException,
             IOException, StreamCorruptedException, ClassNotFoundException,
-            OptionalDataException {
+            OptionalDataException, SlownessModelException, VelocityModelException {
         try {
             TauP_Pierce tauPPierce = new TauP_Pierce();
             String[] noComprendoArgs = tauPPierce.parseCmdLineArgs(args);

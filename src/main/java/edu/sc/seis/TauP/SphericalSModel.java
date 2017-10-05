@@ -269,7 +269,7 @@ public class SphericalSModel extends SlownessModel implements Serializable {
          * for time and distance increments.
          */
         if(sphericalLayer.getTopDepth() == sphericalLayer.getBotDepth()) {
-            return new TimeDist(sphericalRayParam, 0.0, 0.0, outDepth);
+            return new TimeDist(sphericalRayParam, 0.0, 0.0, outDepth, 0.0);
         }
         /*
          * Check to see if this layer contains the center of the earth. If so
@@ -306,7 +306,7 @@ public class SphericalSModel extends SlownessModel implements Serializable {
                         + " botDepth = " + sphericalLayer.getBotDepth()
                         + " dist=" + distRadian + " time=" + time);
             }
-            return new TimeDist(sphericalRayParam, time, distRadian, outDepth);
+            return new TimeDist(sphericalRayParam, time, distRadian, outDepth, 0.0); //SH
         }
         /*
          * Now we check to see if this is a constant velocity layer and if so
@@ -352,6 +352,11 @@ public class SphericalSModel extends SlownessModel implements Serializable {
             double time = b / vel;
             double distRadian = Math.asin(b * sphericalRayParam * vel
                     / (topRadius * botRadius));
+            double dddp = - 1/ (1-b) * ( 1/ Math.abs(Math.sqrt(Math.pow(botRadius/vel,2)-
+                    sphericalRayParam * sphericalRayParam)) -
+                    1/ Math.abs(Math.sqrt(Math.pow(topRadius/vel,2)-
+                            sphericalRayParam * sphericalRayParam))
+                    ); //SH
             if(distRadian < 0.0 || time < 0.0
                     || Double.isNaN(time)
                     || Double.isNaN(distRadian)) {
@@ -369,7 +374,7 @@ public class SphericalSModel extends SlownessModel implements Serializable {
                         + "\n p^2v^2 =" + sphericalRayParam * sphericalRayParam
                         * vel * vel);
             }
-            return new TimeDist(sphericalRayParam, time, distRadian, outDepth);
+            return new TimeDist(sphericalRayParam, time, distRadian, outDepth, dddp);
         }
         /*
          * OK, the layer is not a constant velocity layer or the center of the

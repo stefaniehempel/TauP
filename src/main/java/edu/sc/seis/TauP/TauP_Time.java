@@ -46,12 +46,11 @@ import java.util.Properties;
 /**
  * Calculate travel times for different branches using linear interpolation
  * between known slowness samples.
+ * Modified to account for all planets wrt to (missing) core-structure.
+ * High precision flag. Amplitude contributions.
  * 
  * @version 1.1.3 Wed Jul 18 15:00:35 GMT 2001
  * @author H. Philip Crotwell
- * 
- * Modified to account for all planets wrt to (missing) core-structure.
- * High precision flag.
  * S. Hempel, ISAE Toulouse Sep 2017
  */
 public class TauP_Time {
@@ -72,6 +71,8 @@ public class TauP_Time {
     public String outputFormat = TEXT;
     
     public boolean outputPrecision = false; //SH, to increase output precision by flag, or automatically for smaller bodies
+    
+    public boolean amplOutputBasic = true; //SH, switch to turn on/ off the additional amplitude output
 
     protected String modelName = "iasp91";
 
@@ -430,7 +431,7 @@ public class TauP_Time {
         return Collections.unmodifiableList(arrivals);
     }
     
-    public List<SeismicPhase> getSeismicPhases() {
+    public List<SeismicPhase> getSeismicPhases() throws NoSuchLayerException, NoSuchMatPropException, SlownessModelException {
         if (phases == null) {
             recalcPhases();
         }
@@ -727,7 +728,7 @@ public class TauP_Time {
         });
     }
 
-    public void calculate(double degrees) throws TauModelException {
+    public void calculate(double degrees) throws TauModelException, SlownessModelException, IOException, VelocityModelException {
         calcTime(degrees);
         if (relativePhaseName != "") {
             List<SeismicPhase> relPhases = new ArrayList<SeismicPhase>();
@@ -740,7 +741,7 @@ public class TauP_Time {
         }
     }
 
-    public void calcTime(double degrees) throws TauModelException {
+    public void calcTime(double degrees) throws TauModelException, IOException, SlownessModelException, VelocityModelException {
         depthCorrect(getSourceDepth(), getReceiverDepth());
         clearArrivals();
         this.degrees = degrees;
@@ -757,7 +758,7 @@ public class TauP_Time {
         sortArrivals();
     }
     
-    public void calcTakeoff(double takeoffAngle) throws TauModelException {
+    public void calcTakeoff(double takeoffAngle) throws TauModelException, NoSuchLayerException, NoSuchMatPropException, SlownessModelException {
         stationLat = Double.MAX_VALUE;
         stationLon = Double.MAX_VALUE;
         depthCorrect(getSourceDepth(), getReceiverDepth());
@@ -825,8 +826,11 @@ public class TauP_Time {
      * recalculates the given phases using a possibly new or changed tau model.
      * This should not need to be called by outside classes as it is called by
      * depthCorrect, and calculate.
+     * @throws SlownessModelException 
+     * @throws NoSuchMatPropException 
+     * @throws NoSuchLayerException 
      */
-    protected synchronized void recalcPhases() {
+    protected synchronized void recalcPhases() throws NoSuchLayerException, NoSuchMatPropException, SlownessModelException {
         SeismicPhase seismicPhase;
         List<SeismicPhase> newPhases = new ArrayList<SeismicPhase>();
         boolean alreadyAdded;
@@ -945,6 +949,10 @@ public class TauP_Time {
                 }
                 lineTwo += "  "+phaseFormat.form(relativePhaseName);
             }
+            if (amplOutputBasic) { //SH
+            	lineOne += "     dddp           tstar";
+            	lineTwo += "                         ";
+            }
             out.println(lineOne);
             out.println(lineTwo);
             for(int i = 0; i < lineOne.length(); i++) {
@@ -972,6 +980,10 @@ public class TauP_Time {
                 out.print(phasePuristFormat.form(currArrival.getPuristName()));
                 if (relativePhaseName != "") {
                     out.print(Outputs.formatTime(currArrival.getTime() - relativeArrival.getTime()));
+                }
+                if (amplOutputBasic) {
+                	out.print(Outputs.formatScientific(currArrival.getDddp())+" ");
+                	out.print(Outputs.formatScientific(currArrival.getTstar()));
                 }
                 out.println();
             }
@@ -1161,7 +1173,7 @@ public class TauP_Time {
                 + "m for new model or \nq to quit.\n");
     }
 
-    public void start() throws IOException, TauModelException, TauPException {
+    public void start() throws IOException, TauModelException, TauPException, SlownessModelException, VelocityModelException {
         if((degrees != Double.MAX_VALUE || takeoffAngle != Double.MAX_VALUE 
                 || (stationLat != Double.MAX_VALUE
                 && stationLon != Double.MAX_VALUE
@@ -1640,10 +1652,12 @@ public class TauP_Time {
     /**
      * Allows TauP_Time to run as an application. Creates an instance of
      * TauP_Time. .
+     * @throws VelocityModelException 
+     * @throws SlownessModelException 
      */
     public static void main(String[] args) throws FileNotFoundException,
             IOException, StreamCorruptedException, ClassNotFoundException,
-            OptionalDataException {
+            OptionalDataException, SlownessModelException, VelocityModelException {
         // BasicConfigurator.configure();
         try {
             long prevTime = 0;

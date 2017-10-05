@@ -34,6 +34,9 @@ package edu.sc.seis.TauP;
  * 
  * 
  * @author H. Philip Crotwell
+ * 
+ * Modified to compute dddp for amplitude estimation.
+ * S. Hempel/ ISAE Toulouse Sep 2017
  */
 public class TimeDist implements Cloneable {
 
@@ -44,12 +47,15 @@ public class TimeDist implements Cloneable {
     private double time;
 
     private double distRadian;
+    
+ 	private double dddp; //SH
 
     public TimeDist() {
         this.p = 0;
         this.depth = 0;
         this.time = 0;
         this.distRadian = 0;
+        this.dddp = 0;
     }
 
     public TimeDist(double p) {
@@ -57,6 +63,7 @@ public class TimeDist implements Cloneable {
         this.depth = 0;
         this.time = 0;
         this.distRadian = 0;
+        this.dddp = 0;
     }
 
     public TimeDist(double p, double time, double dist) {
@@ -64,20 +71,31 @@ public class TimeDist implements Cloneable {
         this.depth = 0;
         this.time = time;
         this.distRadian = dist;
+        this.dddp = 0;
     }
-
-    public TimeDist(double p, double time, double dist, double depth) {
+//
+//    public TimeDist(double p, double time, double dist, double depth) {
+//        this.p = p;
+//        this.depth = depth;
+//        this.time = time;
+//        this.distRadian = dist;
+//        this.dddp = 0;
+//    }
+    
+    public TimeDist(double p, double time, double dist, double depth, double dddp) {
         this.p = p;
         this.depth = depth;
         this.time = time;
         this.distRadian = dist;
+        this.dddp = dddp;
     }
 
     public TimeDist add(TimeDist td) {
         return new TimeDist(getP(),
                             getTime()+td.getTime(),
                             getDistRadian()+td.getDistRadian(),
-                            td.getDepth());
+                            td.getDepth(),
+                            getDddp()+td.dddp);
     }
 
     public String toString() {
@@ -104,6 +122,10 @@ public class TimeDist implements Cloneable {
 
     public double getDistRadian() {
         return distRadian;
+    }
+    
+    public double getDddp() {
+        return this.dddp;
     }
     
     public double getDistDeg() {

@@ -132,7 +132,7 @@ public class TauP_Path extends TauP_Pierce {
 		maxPathInc = max;
 	}
 
-	public void calculate(double degrees) throws TauModelException {
+	public void calculate(double degrees) throws TauModelException, SlownessModelException, IOException, VelocityModelException {
 	    super.calculate(degrees);
 	    for (Arrival arrival : getArrivals()) {
             arrival.getPath(); // side effect of calculating path
@@ -163,7 +163,7 @@ public class TauP_Path extends TauP_Pierce {
 			}
 			double calcTime = 0.0;
 			double calcDist = 0.0;
-			TimeDist prevTimeDist = new TimeDist(0,0,0,0);
+			TimeDist prevTimeDist = new TimeDist(0,0,0,0,0);
 			double calcDepth = currArrival.getSourceDepth();
 			TimeDist[] path = currArrival.getPath();
 			for (int j = 0; j < path.length; j++) {
@@ -418,7 +418,7 @@ public class TauP_Path extends TauP_Pierce {
 		}
 	}
 
-	public void start() throws IOException, TauModelException, TauPException {
+	public void start() throws IOException, TauModelException, TauPException, SlownessModelException, VelocityModelException {
 		super.start();
 	}
 
@@ -429,10 +429,12 @@ public class TauP_Path extends TauP_Pierce {
 	/**
 	 * Allows TauP_Path to run as an application. Creates an instance of
 	 * TauP_Path and calls TauP_Path.init() and TauP_Path.start().
+	 * @throws VelocityModelException 
+	 * @throws SlownessModelException 
 	 */
 	public static void main(String[] args) throws FileNotFoundException,
 			IOException, StreamCorruptedException, ClassNotFoundException,
-			OptionalDataException {
+			OptionalDataException, SlownessModelException, VelocityModelException {
 		try {
 			TauP_Path tauPPath = new TauP_Path();
 			tauPPath.setOutFileBase("taup_path");

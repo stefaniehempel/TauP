@@ -32,6 +32,8 @@ package edu.sc.seis.TauP;
  * 
  * fixed_format does rounding incorrectly, fixed Oct 27, 1998, HPC
  * 
+ * Modified to account for zero/ infinite values during amplitude computation.
+ * S. Hempel/ ISAE Toulouse Sep 2017
  */
 public class Format {
 
@@ -39,7 +41,7 @@ public class Format {
      * Formats the number following printf conventions. Main limitation: Can
      * only handle one format parameter at a time Use multiple Format objects to
      * format more than one number
-     * 
+     * St
      * @param s
      *            the format string following printf conventions The string has
      *            a prefix, a format code and a suffix. The prefix and suffix
@@ -581,20 +583,26 @@ public class Format {
         return z;
     }
 
+    /* changes to account for infinite and zero dddps, SH */
     private String exp_format(double d) {
         String f = "";
         int e = 0;
         double dd = d;
         double factor = 1;
-        while(dd > 10) {
-            e++;
-            factor /= 10;
-            dd = dd / 10;
+        if (Double.isInfinite(d)) { //SH - ToDo a smarter solution
+        	d = 0.0;
         }
-        while(dd < 1) {
-            e--;
-            factor *= 10;
-            dd = dd * 10;
+        else if (d != 0.0) {
+	        while(dd > 10) {
+	            e++;
+	            factor /= 10;
+	            dd = dd / 10;
+	        }
+	        while(dd < 1) {
+	            e--;
+	            factor *= 10;
+	            dd = dd * 10;
+	        }
         }
         if((fmt == 'g' || fmt == 'G') && e >= -4 && e < precision)
             return fixed_format(d);

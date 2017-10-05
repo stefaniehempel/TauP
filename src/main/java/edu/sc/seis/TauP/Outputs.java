@@ -54,6 +54,8 @@ public class Outputs {
         latLonFormat = new Format(formString);
         
         //SH
+        formString = "%+14.4e";
+        scientificFormat = new Format(formString);
         formString = "%12.6f";
         highPrecision = new Format(formString);
         
@@ -101,6 +103,10 @@ public class Outputs {
     public static String formatHigh(double latlon) {
         return highPrecision.form(latlon);
     }
+    
+    public static String formatScientific(double value) {
+    	return scientificFormat.form(value);
+    }
 
     protected static Format depthFormat = new Format("%8.1f");
 
@@ -113,4 +119,6 @@ public class Outputs {
     protected static Format latLonFormat = new Format("%8.2f");
     
     protected static Format highPrecision = new Format("12.6f");
+    
+    protected static Format scientificFormat = new Format("+14.4e");
 } // Outputs
