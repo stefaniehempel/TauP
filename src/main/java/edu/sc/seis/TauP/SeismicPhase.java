@@ -552,7 +552,13 @@ public class SeismicPhase implements Serializable, Cloneable {
                                    sourceDepth);
         right.setDddp(getDddp(rayNum+1));
         right.setTstar(getTstar(rayNum+1));
-        return refineArrival(left, right, distRadian, distTolRadian, maxRecursion);
+        Arrival returnArrival = refineArrival(left, right, distRadian, distTolRadian, maxRecursion);
+        if (TauP_Time.amplOutputExtended) {
+        	Amplitude amp = new Amplitude(this);
+        	amp.compute(returnArrival);
+        	returnArrival.setAmplFact(amp.getAmplFact());
+        }
+        return returnArrival;        
     }
         
     public Arrival refineArrival(Arrival leftEstimate, Arrival rightEstimate, double searchDist, double distTolRadian, int maxRecursion) throws NoSuchMatPropException {

@@ -277,6 +277,14 @@ public class Arrival {
     	this.tstar = tstar; 
     }
     
+    public void setAmplFact(double amplFact) {
+		this.amplFact = amplFact;
+    }
+    
+    public void setRTFact(double RTFact) {
+		this.RTFact = RTFact;
+    }
+    
     /**
      * returns travel distance in degrees.
      */

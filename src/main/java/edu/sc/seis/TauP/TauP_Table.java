@@ -495,10 +495,10 @@ public class TauP_Table extends TauP_Time {
                     out.print(outForms.formatRayParam(Math.PI / 180.0
                                                            * currArrival.getRayParam())
                                                            + "   ");
-                    if (amplOutputBasic) { //SH
+                    if (amplOutputBasic || amplOutputExtended) { //SH - TBD
                     	out.print(outForms.formatScientific(currArrival.getDddp()));
-                    	out.print(" " + outForms.formatScientific(0.)); //just fixing output
-                    	out.print(" " + outForms.formatScientific(0.));
+                    	out.print(" " + outForms.formatScientific(currArrival.getAmplFact()));
+                    	out.print(" " + outForms.formatScientific(currArrival.getRTFact()));
                     	out.print(" " + outForms.formatScientific(currArrival.getTstar()));
                     	out.print(" " + outForms.formatDistance(currArrival.getTakeoffAngle()));
                     }

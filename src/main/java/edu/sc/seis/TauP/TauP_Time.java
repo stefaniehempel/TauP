@@ -72,7 +72,9 @@ public class TauP_Time {
     
     public boolean outputPrecision = false; //SH, to increase output precision by flag, or automatically for smaller bodies
     
-    public boolean amplOutputBasic = true; //SH, switch to turn on/ off the additional amplitude output
+    public static boolean amplOutputBasic = true; //SH, switch to turn on/ off the additional amplitude output
+    
+    public static boolean amplOutputExtended = true; //SH, switch to turn on/ off extended amplitude output
 
     protected String modelName = "iasp91";
 
@@ -611,6 +613,10 @@ public class TauP_Time {
             } else if(dashEquals("prc", args[i])) { //SH
             	outputPrecision = true;
             	Outputs.configure(toolProps, outputPrecision);
+            } else if(dashEquals("ampoff", args[i])) { //SH
+            	amplOutputBasic = false;
+            } else if(dashEquals("amplExt", args[i])) { //SH
+            	amplOutputExtended = true;
             } else if(i < args.length - 1) {
                 if(dashEquals("mod", args[i]) || dashEquals("model", args[i])) {
                     toolProps.put("taup.model.name", args[i + 1]);
@@ -950,8 +956,12 @@ public class TauP_Time {
                 lineTwo += "  "+phaseFormat.form(relativePhaseName);
             }
             if (amplOutputBasic) { //SH
-            	lineOne += "     dddp           tstar";
-            	lineTwo += "                         ";
+            	lineOne += "          dddp           tstar";
+            	lineTwo += "                              ";
+            }
+            if (amplOutputExtended) {
+            	lineOne += "       amplFact         RTfact";
+            	lineTwo += "                              ";
             }
             out.println(lineOne);
             out.println(lineTwo);
@@ -984,6 +994,9 @@ public class TauP_Time {
                 if (amplOutputBasic) {
                 	out.print(Outputs.formatScientific(currArrival.getDddp())+" ");
                 	out.print(Outputs.formatScientific(currArrival.getTstar()));
+                }
+                if (amplOutputExtended) {
+                	out.print(Outputs.formatScientific(currArrival.getAmplFact())+" ");
                 }
                 out.println();
             }
