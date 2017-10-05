@@ -31,7 +31,7 @@ public class TauP_Wavefront extends TauP_Path {
     Map<SeismicPhase, Map<Float, List<TimeDist>>> result;
 
     @Override
-    public void calculate(double degrees) throws TauModelException {
+    public void calculate(double degrees) throws TauModelException, SlownessModelException, IOException, VelocityModelException {
         // ignore degrees as we need a suite of distances
         result = calcIsochron();
     }
@@ -150,7 +150,7 @@ public class TauP_Wavefront extends TauP_Path {
         out.flush();
     }
 
-    public Map<SeismicPhase, Map<Float, List<TimeDist>>> calcIsochron() throws TauModelException {
+    public Map<SeismicPhase, Map<Float, List<TimeDist>>> calcIsochron() throws TauModelException, SlownessModelException, IOException, VelocityModelException {
         depthCorrect(getSourceDepth(), getReceiverDepth());
         Map<SeismicPhase, Map<Float, List<TimeDist>>> resultOut = new HashMap<SeismicPhase, Map<Float, List<TimeDist>>>();
         SeismicPhase phase;
@@ -207,7 +207,8 @@ public class TauP_Wavefront extends TauP_Path {
         return new TimeDist(x.getP(),
                             t,
                             Theta.linInterp(x.getTime(), y.getTime(), x.getDistRadian(), y.getDistRadian(), t),
-                            Theta.linInterp(x.getTime(), y.getTime(), x.getDepth(), y.getDepth(), t));
+                            Theta.linInterp(x.getTime(), y.getTime(), x.getDepth(), y.getDepth(), t),
+                            0.); //dddp not relevant here, SH
     }
 
     public void setNumRays(int numRays) {
@@ -283,9 +284,11 @@ public class TauP_Wavefront extends TauP_Path {
     /**
      * Allows TauP_Isochron to run as an application. Creates an instance of
      * TauP_Isochron. .
+     * @throws VelocityModelException 
+     * @throws SlownessModelException 
      */
     public static void main(String[] args) throws FileNotFoundException, IOException, StreamCorruptedException,
-            ClassNotFoundException, OptionalDataException {
+            ClassNotFoundException, OptionalDataException, SlownessModelException, VelocityModelException {
         boolean doInteractive = true;
         try {
             TauP_Wavefront tauP_wavefront = new TauP_Wavefront();

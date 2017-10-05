@@ -187,7 +187,11 @@ public class TauPDaemon extends Thread {
                         tool.setSourceDepth(depth);
                         phaseString = tool.getPhaseNameString();
                     }
-                    tool.calculate(distance);
+                    try {
+						tool.calculate(distance);
+					} catch (SlownessModelException | VelocityModelException e) { //SH
+						System.err.println(e.getMessage());
+					}
                     tool.printResult(tool.getWriter());
                 }
             }

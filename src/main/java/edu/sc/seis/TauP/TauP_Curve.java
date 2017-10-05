@@ -246,7 +246,7 @@ public class TauP_Curve extends TauP_Time {
         printStdUsageTail();
     }
 
-    public void start() throws IOException, TauModelException {
+    public void start() throws IOException, TauModelException, NoSuchLayerException, NoSuchMatPropException, SlownessModelException {
         double tempDepth;
         if(depth != -1 * Double.MAX_VALUE) {
             /* enough info given on cmd line, so just do one calc. */
@@ -295,148 +295,154 @@ public class TauP_Curve extends TauP_Time {
                 for (String sName : splitNames) {
                     relPhases.add(new SeismicPhase(sName, getTauModelDepthCorrected()));
                 }
-            } catch(TauModelException e) {
+            } catch(TauModelException | NoSuchLayerException | NoSuchMatPropException | SlownessModelException e) {
                 Alert.warning("Error with phase=" + relativePhaseName,
                               e.getMessage() + "\nSkipping relative phase");
             }
         }
-        List<SeismicPhase> phaseList = getSeismicPhases();
-        if(gmtScript) {
-            String scriptStuff = "";
-            String psFile;
-            if(getOutFile().endsWith(".gmt")) {
-                psFile = getOutFile().substring(0, getOutFile().length() - 4) + ".ps";
-            } else {
-                psFile = getOutFile() + ".ps";
-            }
-            String title = modelName;
-            if(reduceTime) {
-                title += " reduce vel "+redVelString;
-            } else if (relativePhaseName != "") {
-                title += " relative phase "+relativePhaseName;
-            }
-            for(int phaseNum = 0; phaseNum < phaseList.size(); phaseNum++) {
-                phase = (SeismicPhase)phaseList.get(phaseNum);
-                if(phase.hasArrivals()) {
-                    dist = phase.getDist();
-                    time = phase.getTime();
-                    int phaseMinIndex = 0;
-                    int phaseMaxIndex = 0;
-                    double phaseMaxTime = -1 * Double.MAX_VALUE;
-                    double phaseMinTime = Double.MAX_VALUE;
-                    // find max and min time
-                    for(int i = 0; i < time.length; i++) {
-                        double[] timeValue = calcTimeValue(dist[i], time[i], relPhases);
-                        if (timeValue.length == 0) {continue;}
-                        if(timeValue[0] > maxTime) {
-                            maxTime = timeValue[0];
-                        }
-                        if(timeValue[0] < minTime) {
-                            minTime = timeValue[0];
-                        }
-                        if(timeValue[0] > phaseMaxTime) {
-                            phaseMaxTime = timeValue[0];
-                            phaseMaxIndex = i;
-                        }
-                        if(timeValue[0] < phaseMinTime) {
-                            phaseMinTime = timeValue[0];
-                            phaseMinIndex = i;
-                        }
-                    }
-                    arcDistance = Math.acos(Math.cos(dist[phaseMaxIndex]));
-                    if(reduceTime || relativePhaseName != "") {
-                        scriptStuff += (float)(180.0 / Math.PI * arcDistance)
-                                + "  "
-                                + (float)(phaseMaxTime) + " 10 0 0 9 "
-                                + phase.getName() + "\n";
-                    } else {
-                        int lix = (dist[1] > Math.PI) ? 1 : dist.length - 1;
-                        double ldel = 180.0 / Math.PI
-                                * Math.acos(Math.cos(dist[lix]));
-                        scriptStuff += (float)ldel + "  " + (float)time[lix]
-                                + " 10 0 0 1 " + phase.getName() + "\n";
-                    }
-                }
-            }
-            // round max and min time to nearest 100 seconds
-            maxTime = Math.ceil(maxTime / 100) * 100;
-            minTime = Math.floor(minTime / 100) * 100;
-            out.println("pstext -JX"+getMapWidth()+getMapWidthUnit()+" -P -R0/180/" + minTime + "/" + maxTime
-                    + " -B20/100/:.'" + title + "': -K > " + psFile
-                    + " <<END");
-            out.print(scriptStuff);
-            out.println("END\n");
-            out.println("psxy -JX -R -m -O >> " + psFile + " <<END");
-        }
-        double minDist = 0;
-        double maxDist = Math.PI;
-        if(relativePhaseName != "") {
-            for (SeismicPhase seismicPhase : relPhases) {
-                double[] relDist = seismicPhase.getDist();
-                if (relDist.length == 0) {
-                    continue;
-                }
-                minDist = relDist[0];
-                maxDist = relDist[0];
-                for (int i = 0; i < relDist.length; i++) {
-                    if (relDist[i] < minDist) {minDist = relDist[i];}
-                    if (relDist[i] > maxDist) {maxDist = relDist[i];}
-                }
-            }
-        }
-        for(int phaseNum = 0; phaseNum < phaseList.size(); phaseNum++) {
-            phase = phaseList.get(phaseNum);
-            if(phase.hasArrivals()) {
-                dist = phase.getDist();
-                time = phase.getTime();
-                rayParams = phase.getRayParams();
-                double minPhaseDist = dist[0];
-                double maxPhaseDist = dist[0];
-                if(relativePhaseName != "") {
-                    for (int i = 0; i < dist.length; i++) {
-                        if (dist[i] < minPhaseDist) {minDist = dist[i];}
-                        if (dist[i] > maxPhaseDist) {maxDist = dist[i];}
-                    }
-                }
-                if(dist.length > 0) {
-                    out.print("> " + phase.getName() + " for a source depth of "
-                              + depth + " kilometers in the " + modelName
-                              + " model");
-                    if(relativePhaseName != "") {
-                        out.print(" relative to "+relativePhaseName);
-                    }
-                    out.println();
-                }
-                for(int i = 0; i < dist.length; i++) {
-                    writeValue(dist[i], time[i], relPhases, out);
-                    if(i < dist.length - 1 && (rayParams[i] == rayParams[i + 1])
-                            && rayParams.length > 2) {
-                        /* Here we have a shadow zone, so put a break in the curve. */
-                        out.println("> Shadow Zone");
-                        continue;
-                    }
-                    checkBoundary(0, i, phase, relPhases, out);
-                    checkBoundary(Math.PI, i, phase, relPhases, out);
-                    if (minDist != 0 && minDist != Math.PI) {
-                        checkBoundary(minDist, i, phase, relPhases, out);
-                    }
-                    if (maxDist != 0 && maxDist != Math.PI) {
-                        checkBoundary(maxDist, i, phase, relPhases, out);
-                    }
-                }
-            } else {
-                if (verbose) {
-                    System.out.println("Phase "+phase.getName()+" does not exist in "+phase.getTauModel().getModelName()+" for depth "+phase.getTauModel().getSourceDepth());
-                }
-            }
-        }
+        List<SeismicPhase> phaseList;
+		try {
+			phaseList = getSeismicPhases();
+		
+	        if(gmtScript) {
+	            String scriptStuff = "";
+	            String psFile;
+	            if(getOutFile().endsWith(".gmt")) {
+	                psFile = getOutFile().substring(0, getOutFile().length() - 4) + ".ps";
+	            } else {
+	                psFile = getOutFile() + ".ps";
+	            }
+	            String title = modelName;
+	            if(reduceTime) {
+	                title += " reduce vel "+redVelString;
+	            } else if (relativePhaseName != "") {
+	                title += " relative phase "+relativePhaseName;
+	            }
+	            for(int phaseNum = 0; phaseNum < phaseList.size(); phaseNum++) {
+	                phase = (SeismicPhase)phaseList.get(phaseNum);
+	                if(phase.hasArrivals()) {
+	                    dist = phase.getDist();
+	                    time = phase.getTime();
+	                    int phaseMinIndex = 0;
+	                    int phaseMaxIndex = 0;
+	                    double phaseMaxTime = -1 * Double.MAX_VALUE;
+	                    double phaseMinTime = Double.MAX_VALUE;
+	                    // find max and min time
+	                    for(int i = 0; i < time.length; i++) {
+	                        double[] timeValue = calcTimeValue(dist[i], time[i], relPhases);
+	                        if (timeValue.length == 0) {continue;}
+	                        if(timeValue[0] > maxTime) {
+	                            maxTime = timeValue[0];
+	                        }
+	                        if(timeValue[0] < minTime) {
+	                            minTime = timeValue[0];
+	                        }
+	                        if(timeValue[0] > phaseMaxTime) {
+	                            phaseMaxTime = timeValue[0];
+	                            phaseMaxIndex = i;
+	                        }
+	                        if(timeValue[0] < phaseMinTime) {
+	                            phaseMinTime = timeValue[0];
+	                            phaseMinIndex = i;
+	                        }
+	                    }
+	                    arcDistance = Math.acos(Math.cos(dist[phaseMaxIndex]));
+	                    if(reduceTime || relativePhaseName != "") {
+	                        scriptStuff += (float)(180.0 / Math.PI * arcDistance)
+	                                + "  "
+	                                + (float)(phaseMaxTime) + " 10 0 0 9 "
+	                                + phase.getName() + "\n";
+	                    } else {
+	                        int lix = (dist[1] > Math.PI) ? 1 : dist.length - 1;
+	                        double ldel = 180.0 / Math.PI
+	                                * Math.acos(Math.cos(dist[lix]));
+	                        scriptStuff += (float)ldel + "  " + (float)time[lix]
+	                                + " 10 0 0 1 " + phase.getName() + "\n";
+	                    }
+	                }
+	            }
+	            // round max and min time to nearest 100 seconds
+	            maxTime = Math.ceil(maxTime / 100) * 100;
+	            minTime = Math.floor(minTime / 100) * 100;
+	            out.println("pstext -JX"+getMapWidth()+getMapWidthUnit()+" -P -R0/180/" + minTime + "/" + maxTime
+	                    + " -B20/100/:.'" + title + "': -K > " + psFile
+	                    + " <<END");
+	            out.print(scriptStuff);
+	            out.println("END\n");
+	            out.println("psxy -JX -R -m -O >> " + psFile + " <<END");
+	        }
+	        double minDist = 0;
+	        double maxDist = Math.PI;
+	        if(relativePhaseName != "") {
+	            for (SeismicPhase seismicPhase : relPhases) {
+	                double[] relDist = seismicPhase.getDist();
+	                if (relDist.length == 0) {
+	                    continue;
+	                }
+	                minDist = relDist[0];
+	                maxDist = relDist[0];
+	                for (int i = 0; i < relDist.length; i++) {
+	                    if (relDist[i] < minDist) {minDist = relDist[i];}
+	                    if (relDist[i] > maxDist) {maxDist = relDist[i];}
+	                }
+	            }
+	        }
+	        for(int phaseNum = 0; phaseNum < phaseList.size(); phaseNum++) {
+	            phase = phaseList.get(phaseNum);
+	            if(phase.hasArrivals()) {
+	                dist = phase.getDist();
+	                time = phase.getTime();
+	                rayParams = phase.getRayParams();
+	                double minPhaseDist = dist[0];
+	                double maxPhaseDist = dist[0];
+	                if(relativePhaseName != "") {
+	                    for (int i = 0; i < dist.length; i++) {
+	                        if (dist[i] < minPhaseDist) {minDist = dist[i];}
+	                        if (dist[i] > maxPhaseDist) {maxDist = dist[i];}
+	                    }
+	                }
+	                if(dist.length > 0) {
+	                    out.print("> " + phase.getName() + " for a source depth of "
+	                              + depth + " kilometers in the " + modelName
+	                              + " model");
+	                    if(relativePhaseName != "") {
+	                        out.print(" relative to "+relativePhaseName);
+	                    }
+	                    out.println();
+	                }
+	                for(int i = 0; i < dist.length; i++) {
+	                    writeValue(dist[i], time[i], relPhases, out);
+	                    if(i < dist.length - 1 && (rayParams[i] == rayParams[i + 1])
+	                            && rayParams.length > 2) {
+	                        /* Here we have a shadow zone, so put a break in the curve. */
+	                        out.println("> Shadow Zone");
+	                        continue;
+	                    }
+	                    checkBoundary(0, i, phase, relPhases, out);
+	                    checkBoundary(Math.PI, i, phase, relPhases, out);
+	                    if (minDist != 0 && minDist != Math.PI) {
+	                        checkBoundary(minDist, i, phase, relPhases, out);
+	                    }
+	                    if (maxDist != 0 && maxDist != Math.PI) {
+	                        checkBoundary(maxDist, i, phase, relPhases, out);
+	                    }
+	                }
+	            } else {
+	                if (verbose) {
+	                    System.out.println("Phase "+phase.getName()+" does not exist in "+phase.getTauModel().getModelName()+" for depth "+phase.getTauModel().getSourceDepth());
+	                }
+	            }
+	        }
+        } catch (SlownessModelException | VelocityModelException | TauModelException e) { //SH
+			System.err.println(e.getMessage());
+		}
     }
     
     protected void checkBoundary(double boundaryDistRadian,
                                  int distIndex,
                                  SeismicPhase phase,
                                  List<SeismicPhase> relPhase,
-                                 PrintWriter out) throws IOException {
+                                 PrintWriter out) throws IOException, SlownessModelException, VelocityModelException, TauModelException {
         double arcDistance = Math.acos(Math.cos(boundaryDistRadian));
         if (distIndex < phase.getDist().length-1 && 
                 (isBetween(Math.acos(Math.cos(phase.getDist()[distIndex])),
@@ -453,7 +459,7 @@ public class TauP_Curve extends TauP_Time {
         }
     }
     
-    protected double[] calcTimeValue(double distRadian, double time, List<SeismicPhase> relPhase) throws IOException {
+    protected double[] calcTimeValue(double distRadian, double time, List<SeismicPhase> relPhase) throws IOException, SlownessModelException, VelocityModelException, TauModelException {
         double timeReduced = time;
         /* Here we use a trig trick to make sure the dist is 0 to PI. */
         double arcDistance = Math.acos(Math.cos(distRadian));
@@ -473,7 +479,7 @@ public class TauP_Curve extends TauP_Time {
         return new double[] { timeReduced };
     }
     
-    public void writeValue(double distRadian, double time, List<SeismicPhase> relPhase, PrintWriter out) throws IOException {
+    public void writeValue(double distRadian, double time, List<SeismicPhase> relPhase, PrintWriter out) throws IOException, SlownessModelException, VelocityModelException, TauModelException {
         double[] timeReduced = calcTimeValue(distRadian, time, relPhase);
         if (timeReduced.length == 0) {return; }
         double arcDistance = Math.acos(Math.cos(distRadian));
@@ -527,10 +533,13 @@ public class TauP_Curve extends TauP_Time {
     /**
      * Allows TauP_Curve to run as an application. Creates an instance of
      * TauP_Curve. .
+     * @throws SlownessModelException 
+     * @throws NoSuchMatPropException 
+     * @throws NoSuchLayerException 
      */
     public static void main(String[] args) throws FileNotFoundException,
             IOException, StreamCorruptedException, ClassNotFoundException,
-            OptionalDataException {
+            OptionalDataException, NoSuchLayerException, NoSuchMatPropException, SlownessModelException {
         boolean doInteractive = true;
         try {
             TauP_Curve tauPCurve = new TauP_Curve();

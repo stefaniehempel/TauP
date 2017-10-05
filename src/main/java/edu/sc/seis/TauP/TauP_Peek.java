@@ -57,7 +57,7 @@ public class TauP_Peek {
 
     public static void main(String[] args) throws FileNotFoundException,
             IOException, StreamCorruptedException, ClassNotFoundException,
-            OptionalDataException {
+            OptionalDataException, SlownessModelException, VelocityModelException {
         String modelFilename;
         if(args.length == 2
                 && (args[0].equals("-mod") || args[0].equals("-model"))) {

@@ -379,7 +379,11 @@ public class TauPApplet extends Applet implements ActionListener, ItemListener {
                     phases = phasesField.getText();
                     tool.clearPhaseNames();
                     tool.parsePhaseList(phases);
-                    tool.recalcPhases();
+                    try {
+						tool.recalcPhases();
+					} catch (NoSuchLayerException | NoSuchMatPropException | SlownessModelException e1) { //SH
+						System.err.println(e1.getMessage());
+					}
                 }
                 // update depth. Note this only recomputes the TauModel if the
                 // depth has changed
@@ -388,7 +392,11 @@ public class TauPApplet extends Applet implements ActionListener, ItemListener {
                 // calculate the times for each phase at the given distance
                 distance = Double.valueOf(distanceField.getText())
                         .doubleValue();
-                tool.calculate(distance);
+                try {
+					tool.calculate(distance);
+				} catch (SlownessModelException | VelocityModelException e1) {
+					System.err.println(e1.getMessage());
+				}
                 if(textOrPlot.getLabel().equals("Plot")) {
                     // print it out
                     StringWriter result = new StringWriter();

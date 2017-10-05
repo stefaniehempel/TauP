@@ -118,7 +118,7 @@ public class TauP_SetSac extends TauP_Time {
         }
     }
 
-    public void calculate(double degrees) throws TauModelException {
+    public void calculate(double degrees) throws TauModelException, IOException, SlownessModelException, VelocityModelException {
         calcTime(degrees);
     }
 
@@ -127,7 +127,7 @@ public class TauP_SetSac extends TauP_Time {
         setSacVarNums();
     }
 
-    public void start() throws IOException, TauModelException {
+    public void start() throws IOException, TauModelException, SlownessModelException, VelocityModelException {
         for (String filename : sacFileNames) {
             if(verbose) {
                 System.out.println(filename);
@@ -136,7 +136,7 @@ public class TauP_SetSac extends TauP_Time {
         }
     }
     
-    public void processSacFile(File f) throws FileNotFoundException, IOException, TauModelException {
+    public void processSacFile(File f) throws FileNotFoundException, IOException, TauModelException, SlownessModelException, VelocityModelException {
         
         if (f.isDirectory()) {
             File[] subfiles = f.listFiles();
@@ -330,10 +330,12 @@ public class TauP_SetSac extends TauP_Time {
     /**
      * Allows TauP_SetSac to run as an application. Creates an instance of
      * TauP_SetSac. .
+     * @throws VelocityModelException 
+     * @throws SlownessModelException 
      */
     public static void main(String[] args) throws FileNotFoundException,
             IOException, StreamCorruptedException, ClassNotFoundException,
-            OptionalDataException {
+            OptionalDataException, SlownessModelException, VelocityModelException {
         TauP_SetSac tauPSetSac = new TauP_SetSac();
         if(args.length == 0) {
             tauPSetSac.printUsage();
