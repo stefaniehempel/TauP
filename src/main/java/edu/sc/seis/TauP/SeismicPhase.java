@@ -617,7 +617,7 @@ public class SeismicPhase implements Serializable, Cloneable {
         /* counter for passes through each branch. 0 is P and 1 is S. */
         int[][] timesBranches = calcBranchMultiplier();
         TimeDist sum = new TimeDist(rayParam);
-        double tstar = 0., thisQ = 0.;
+        double tstar = 0.;
         /* Sum the branches with the appropriate multiplier. */
         for(int j = 0; j < tMod.getNumBranches(); j++) {
             if(timesBranches[0][j] != 0) {
@@ -651,13 +651,7 @@ public class SeismicPhase implements Serializable, Cloneable {
                                   td.getDepth(),
                                   timesBranches[1][j]*td.getDddp()); //SH
                 sum = sum.add(td);
-                // exception for K phase
-                if (tMod.getTauBranch(j,SWAVE).getTopDepth()>=tMod.getCmbDepth() &&
-                		tMod.getTauBranch(j, SWAVE).getBotDepth()<=tMod.getIocbDepth()) {
-                	thisQ = tMod.getVelocityModel().evaluateAbove(tMod.getTauBranch(j, PWAVE).getBotDepth(), 'Q');
-                }
-                else thisQ = tMod.getVelocityModel().evaluateAbove(tMod.getTauBranch(j, SWAVE).getBotDepth(), 'q');
-                tstar += td.getTime()/thisQ;
+                tstar += td.getTime()/getQS(j);
             }
         }
         Arrival shotArrival = new Arrival(this,
@@ -2124,8 +2118,6 @@ public class SeismicPhase implements Serializable, Cloneable {
         /* counter for passes through each branch. 0 is P and 1 is S. */
         int[][] timesBranches = calcBranchMultiplier();
         
-        double thisQ = 0.;
-        
         /* Sum the branches with the appropriate multiplier. */
         for(int j = 0; j < tMod.getNumBranches(); j++) {
             if(timesBranches[0][j] != 0) {
@@ -2147,14 +2139,8 @@ public class SeismicPhase implements Serializable, Cloneable {
                             * tMod.getTauBranch(j, SWAVE).getDist(i);
                     time[i - maxRayParamIndex] += timesBranches[1][j]
                             * tMod.getTauBranch(j, SWAVE).time[i];
-                    // exception for K phase
-                    if (tMod.getTauBranch(j,SWAVE).getTopDepth()>=tMod.getCmbDepth() &&
-                    		tMod.getTauBranch(j, SWAVE).getBotDepth()<=tMod.getIocbDepth()) {
-                    	thisQ = vMod.evaluateAbove(tMod.getTauBranch(j, PWAVE).getBotDepth(), 'Q');
-                    }
-                    else thisQ = vMod.evaluateAbove(tMod.getTauBranch(j, SWAVE).getBotDepth(), 'q');
                     tstar[i - maxRayParamIndex] += timesBranches[1][j]
-                            * tMod.getTauBranch(j, SWAVE).time[i]/thisQ;	
+                            * tMod.getTauBranch(j, SWAVE).time[i]/getQS(j);	
                     dddp[i - maxRayParamIndex] += timesBranches[1][j]
                             * tMod.getTauBranch(j, SWAVE).getDddp(i);
                 }
@@ -2308,15 +2294,9 @@ public class SeismicPhase implements Serializable, Cloneable {
                                 newdddp[hSZIndex] += timesBranches[1][j]
                                         * tMod.getTauBranch(j, SWAVE).getDddp(maxRayParamIndex
                                                 + hSZIndex - indexOffset);
-                                // exception for K phase
-                                if (tMod.getTauBranch(j,SWAVE).getTopDepth()>=tMod.getCmbDepth() &&
-                                		tMod.getTauBranch(j, SWAVE).getBotDepth()<=tMod.getIocbDepth()) {
-                                	thisQ = vMod.evaluateAbove(tMod.getTauBranch(j, PWAVE).getBotDepth(), 'Q');
-                                }
-                                else thisQ = vMod.evaluateAbove(tMod.getTauBranch(j, SWAVE).getBotDepth(), 'q');
                                 newtstar[hSZIndex] += timesBranches[1][j]
                                         * tMod.getTauBranch(j, SWAVE).time[maxRayParamIndex
-                                                                           + hSZIndex - indexOffset]/thisQ;
+                                                                           + hSZIndex - indexOffset]/getQS(j);
                             }
                         }
                         System.arraycopy(dist,
@@ -2354,6 +2334,19 @@ public class SeismicPhase implements Serializable, Cloneable {
                 }
             }
         }
+    }
+
+    /*
+     *  exception for K leg necessary, since left SWAVE for SKS and others
+     *  (in order to calculate the correct maxRayParam), SH
+     */
+    private double getQS(int j) throws NoSuchLayerException, NoSuchMatPropException {
+    	double botDepth = tMod.getTauBranch(j, SWAVE).getBotDepth();
+    	if (tMod.getTauBranch(j,SWAVE).getTopDepth()>=tMod.getCmbDepth() &&
+    		botDepth<=tMod.getIocbDepth()) {
+    	return tMod.getVelocityModel().evaluateAbove(botDepth, 'Q');
+    	}
+    	else return tMod.getVelocityModel().evaluateAbove(tMod.getTauBranch(j, SWAVE).getBotDepth(), 'q');
     }
 
     /**
