@@ -557,6 +557,9 @@ public class SeismicPhase implements Serializable, Cloneable {
         	Amplitude amp = new Amplitude(this);
         	amp.compute(returnArrival);
         	returnArrival.setAmplFact(amp.getAmplFact());
+        	returnArrival.setRTFact(amp.getRT());
+        	returnArrival.setComp(amp.getComp());
+        	returnArrival.setPol(amp.getPol());
         }
         return returnArrival;        
     }

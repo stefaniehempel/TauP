@@ -74,7 +74,19 @@ public class TauP_Time {
     
     public static boolean amplOutputBasic = true; //SH, switch to turn on/ off the additional amplitude output
     
-    public static boolean amplOutputExtended = true; //SH, switch to turn on/ off extended amplitude output
+    public static boolean amplOutputExtended = false; //SH, switch to turn on/ off extended amplitude output
+    
+    public static boolean amplPolarizationSwitch = false; //SH, to switch on polarization control
+    
+    public static boolean amplHorizontal = false; //SH, default polarization vertical, except for phases containing ScS
+    
+    public static boolean amplCriticalRTOnly = false; //SH, to only consider reflections, and transmission at CMB/ ICB
+    
+    public static boolean freeSurfaceSwitch = true; //SH, default FreeSurfaceCorrection computed
+    
+    public static boolean verticalComp = true; //SH, default FreeSurfaceCorrection computed for same component as polarization indicates
+    
+    public static boolean compControl = false; //SH, switch to turn on user component control
 
     protected String modelName = "iasp91";
 
@@ -615,8 +627,10 @@ public class TauP_Time {
             	Outputs.configure(toolProps, outputPrecision);
             } else if(dashEquals("ampoff", args[i])) { //SH
             	amplOutputBasic = false;
-            } else if(dashEquals("amplExt", args[i])) { //SH
+            } else if(args[i].equalsIgnoreCase("-ampExt")) { //SH
             	amplOutputExtended = true;
+            } else if(dashEquals("crit", args[i])) { //SH
+            	amplCriticalRTOnly = true;
             } else if(i < args.length - 1) {
                 if(dashEquals("mod", args[i]) || dashEquals("model", args[i])) {
                     toolProps.put("taup.model.name", args[i + 1]);
@@ -646,6 +660,23 @@ public class TauP_Time {
                 } else if(args[i].equalsIgnoreCase("-o")) {
                     outFileBase = args[i + 1];
                     i++;
+                } else if(dashEquals("pol", args[i])) { //SH
+                	if (args[i+1].matches("[vV]|[hH]")) {
+                		amplHorizontal = args[i+1].equalsIgnoreCase("V") ? false : true;
+                		amplPolarizationSwitch = true;
+                	} else System.out.println("-pol options vV or hH");
+                	i++;
+                } else if(dashEquals("comp", args[i])) { //SH
+                	if (args[i+1].matches("[xX]|[zZ]|[yY]|[eE]|[nN]")) {
+                		verticalComp = args[i+1].equalsIgnoreCase("Z") ? true : false;
+                		compControl = true;
+                	} else System.out.println("-comp options zZ or xX");
+                	i++;
+                } else if(args[i].equalsIgnoreCase("-FSC")) { //SH
+                	if (args[i+1].matches("[oO]ff|[oO]n")) {
+                		freeSurfaceSwitch = args[i+1].equalsIgnoreCase("on") ? true : false;
+                	} else System.out.println("-FSC options on or off");
+                	i++;
                 } else if(dashEquals("rel", args[i])) {
                     relativePhaseName = args[i + 1];
                     i++;
@@ -945,9 +976,9 @@ public class TauP_Time {
             }
             out.println(modelLine);
             String lineOne = "Distance   "+prcSpace+"Depth   " + prcSpace + phaseFormat.form("Phase")
-                    + prcSpace + "   Travel    "+prcSpace+"Ray Param  "+prcSpace+"Takeoff  "+prcSpace+"Incident  "+prcSpace+"Purist    Purist";
+                    + prcSpace + "   Travel    "+prcSpace+"Ray Param  "+prcSpace+"Takeoff  "+prcSpace+"Incident  "+prcSpace+"Purist    "+ phaseFormat.form("Purist");
             String lineTwo = "  (deg)     "+prcSpace+"(km)   " + prcSpace + phaseFormat.form("Name ")
-                    + prcSpace + "   Time (s)  "+prcSpace+"p (s/deg)   "+prcSpace+"(deg)    "+prcSpace+"(deg)   "+prcSpace+"Distance   Name ";
+                    + prcSpace + "   Time (s)  "+prcSpace+"p (s/deg)   "+prcSpace+"(deg)    "+prcSpace+"(deg)   "+prcSpace+"Distance   "+ phaseFormat.form("Name ");
             if (relativePhaseName != "") {
                 lineOne += " Relative to";
                 for (int s=0; s<(11-relativePhaseName.length())/2;s++) {
@@ -956,12 +987,12 @@ public class TauP_Time {
                 lineTwo += "  "+phaseFormat.form(relativePhaseName);
             }
             if (amplOutputBasic) { //SH
-            	lineOne += "          dddp           tstar";
-            	lineTwo += "                              ";
+            	lineOne += "       dddp        tstar    ";
+            	lineTwo += "                            ";
             }
             if (amplOutputExtended) {
-            	lineOne += "       amplFact         RTfact";
-            	lineTwo += "                              ";
+            	lineOne += "   amplFact         RTfact      VHZX";
+            	lineTwo += "                                    ";
             }
             out.println(lineOne);
             out.println(lineTwo);
@@ -997,6 +1028,8 @@ public class TauP_Time {
                 }
                 if (amplOutputExtended) {
                 	out.print(Outputs.formatScientific(currArrival.getAmplFact())+" ");
+                	out.print(Outputs.formatScientific(currArrival.getRTFact())+" ");
+                	out.print("   " + currArrival.getPol() + ((freeSurfaceSwitch) ? currArrival.getComp() : "-") + " "); 
                 }
                 out.println();
             }

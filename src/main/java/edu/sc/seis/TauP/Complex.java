@@ -270,6 +270,15 @@ public class Complex implements java.io.Serializable, Cloneable {
     public static Complex conjugate(Complex z) {
         return new Complex(z.re, -z.im);
     }
+    
+    // added by Stefanie, for RTcoeff
+    public static Complex posImag(Complex z) {
+        return new Complex(z.re, Math.abs(z.im));
+    }
+    
+    public Complex posImag() {
+        return posImag(this);
+    }
 
     /**
      * Returns the sum of two Complex objects, x+y.

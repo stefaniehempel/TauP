@@ -168,6 +168,10 @@ public class Arrival {
     //SH
     private double RTFact;
     
+    private String polarization = "V";
+    
+    private String component = "Z";
+    
     private double amplFact;
     
     private double dtdh;
@@ -212,6 +216,14 @@ public class Arrival {
     
     public double getRTFact() {
 		return this.RTFact;
+    }
+    
+    public String getPol() {
+		return this.polarization;
+    }
+    
+    public String getComp() {
+		return this.component;
     }
     
     public double getDtdh() {
@@ -283,6 +295,14 @@ public class Arrival {
     
     public void setRTFact(double RTFact) {
 		this.RTFact = RTFact;
+    }
+    
+    public void setPol(String pol) {
+    	this.polarization = pol;
+    }
+    
+    public void setComp(String comp) {
+		this.component = comp;
     }
     
     /**
