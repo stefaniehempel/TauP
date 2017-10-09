@@ -87,6 +87,8 @@ public class TauP_Time {
     public static boolean verticalComp = true; //SH, default FreeSurfaceCorrection computed for same component as polarization indicates
     
     public static boolean compControl = false; //SH, switch to turn on user component control
+    
+    public static String cmtFileName = ""; //SH, file for RadiationPattern, default empty "CMTSOLUTION" is used
 
     protected String modelName = "iasp91";
 
@@ -664,18 +666,21 @@ public class TauP_Time {
                 	if (args[i+1].matches("[vV]|[hH]")) {
                 		amplHorizontal = args[i+1].equalsIgnoreCase("V") ? false : true;
                 		amplPolarizationSwitch = true;
+                		i++;
                 	} else System.out.println("-pol options vV or hH");
-                	i++;
                 } else if(dashEquals("comp", args[i])) { //SH
                 	if (args[i+1].matches("[xX]|[zZ]|[yY]|[eE]|[nN]")) {
                 		verticalComp = args[i+1].equalsIgnoreCase("Z") ? true : false;
                 		compControl = true;
+                		i++;
                 	} else System.out.println("-comp options zZ or xX");
-                	i++;
                 } else if(args[i].equalsIgnoreCase("-FSC")) { //SH
                 	if (args[i+1].matches("[oO]ff|[oO]n")) {
                 		freeSurfaceSwitch = args[i+1].equalsIgnoreCase("on") ? true : false;
+                		i++;
                 	} else System.out.println("-FSC options on or off");
+                } else if(dashEquals("cmt", args[i])) { //SH
+                	cmtFileName = args[i+1];
                 	i++;
                 } else if(dashEquals("rel", args[i])) {
                     relativePhaseName = args[i + 1];

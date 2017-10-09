@@ -46,9 +46,9 @@ public class Amplitude {
     	double planetRadius=vMod.getRadiusOfEarth();
     	
     	// automatically assign vertical if not ScS, if polarization control not chosen by user
-    	if ( !(thisPhase.name.contains("K") &&
+    	if ( !(thisPhase.name.contains("K")) &&
     			( thisPhase.name.contains("ScS") || thisPhase.name.contains("SS") ||
-					thisPhase.name.contains("sS") || thisPhase.name.contains("Ss") ) ) ) {
+					thisPhase.name.contains("sS") || thisPhase.name.contains("Ss") ) ) {
     			if (!polarization) horizontal=true;
     			if (!compControl) verticalComp=false;
     	}
@@ -236,8 +236,22 @@ public class Amplitude {
 	    }
 	}
 	
+	private void computeRadPat(double rayParam) {
+        	try {
+                RadiationPattern radPat = new RadiationPattern(TauP_Time.cmtFileName);
+                double takeoffAngle = thisPhase.calcTakeoffAngle(rayParam);
+                radPat.setTakeOffAngle(takeoffAngle);
+                double amplitude = radPat.getRadPatFactor(thisPhase.getLegs().get(0));
+                amplitudeFactor *= amplitude;
+        	}
+        	catch(RuntimeException ex) { 
+        		throw new RuntimeException("Error during computation of radiation pattern.");
+        	}
+        }
+	
 	public void compute(Arrival interpArrival) throws NoSuchLayerException, NoSuchMatPropException {
 		computeAmplitudeFactor(interpArrival);
+		computeRadPat(interpArrival.getRayParam());
 		computeRTfactor(interpArrival.getRayParam());
 	}
 	
